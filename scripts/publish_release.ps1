@@ -58,7 +58,7 @@ function Invoke-GitHubJson {
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
 
-$package = Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json
+$package = Get-Content (Join-Path $root "package.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 $version = $package.version
 $productName = $package.build.productName
 $tagName = "v$version"
