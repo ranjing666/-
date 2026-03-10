@@ -1,16 +1,19 @@
-import { Alert, Card, Col, Form, Input, InputNumber, Row, Segmented, Select, Space, Typography } from "antd";
+import { Alert, Button, Card, Col, Form, Input, InputNumber, Row, Segmented, Select, Space, Typography } from "antd";
 import { createLoginConfig } from "../lib/defaults";
+import { SIMPLE_LOGIN_METHODS } from "../lib/uiMode";
 import type { LoginConfig } from "../types/config";
 
 const { Paragraph, Text } = Typography;
 
 interface LoginSettingsStepProps {
   login: LoginConfig;
+  simpleMode: boolean;
+  onSwitchToAdvanced: () => void;
   onChange: (login: LoginConfig) => void;
 }
 
 export function LoginSettingsStep(props: LoginSettingsStepProps) {
-  const { login, onChange } = props;
+  const { login, simpleMode, onSwitchToAdvanced, onChange } = props;
 
   const setMethod = (method: LoginConfig["method"]) => {
     if (method === login.method) {
@@ -18,6 +21,24 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
     }
     onChange(createLoginConfig(method));
   };
+
+  const loginMethodOptions = SIMPLE_LOGIN_METHODS.map((method) => {
+    if (method === "none") {
+      return { label: "无需登录", value: method };
+    }
+    if (method === "password") {
+      return { label: "账号密码", value: method };
+    }
+    return { label: "Cookie / Token", value: method };
+  });
+
+  const segmentedOptions =
+    simpleMode && login.method === "wallet"
+      ? [...loginMethodOptions, { label: "私钥钱包（当前配置）", value: "wallet" }]
+      : [
+          ...loginMethodOptions,
+          ...(simpleMode ? [] : [{ label: "私钥钱包", value: "wallet" as const }])
+        ];
 
   return (
     <Space
@@ -42,14 +63,23 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
         <Segmented
           value={login.method}
           onChange={(value) => setMethod(value as LoginConfig["method"])}
-          options={[
-            { label: "无需登录", value: "none" },
-            { label: "账号密码", value: "password" },
-            { label: "私钥钱包", value: "wallet" },
-            { label: "Cookie / Token", value: "cookie" }
-          ]}
+          options={segmentedOptions}
         />
       </Card>
+
+      {simpleMode && login.method === "wallet" ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="私钥钱包登录已归到专业模式"
+          description={
+            <Space direction="vertical">
+              <Text>超简模式默认不显示钱包签名和交易脚手架，避免第一次使用时信息过载。</Text>
+              <Button onClick={onSwitchToAdvanced}>切到专业模式继续编辑</Button>
+            </Space>
+          }
+        />
+      ) : null}
 
       {login.method === "none" ? (
         <Alert
@@ -81,23 +111,25 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
                   />
                 </Form.Item>
               </Col>
-              <Col
-                xs={24}
-                md={12}
-              >
-                <Form.Item label="成功状态选择器">
-                  <Input
-                    value={login.successSelector}
-                    onChange={(event) =>
-                      onChange({
-                        ...login,
-                        successSelector: event.target.value
-                      })
-                    }
-                    placeholder=".dashboard, [data-testid='user-menu']"
-                  />
-                </Form.Item>
-              </Col>
+              {!simpleMode ? (
+                <Col
+                  xs={24}
+                  md={12}
+                >
+                  <Form.Item label="成功状态选择器">
+                    <Input
+                      value={login.successSelector}
+                      onChange={(event) =>
+                        onChange({
+                          ...login,
+                          successSelector: event.target.value
+                        })
+                      }
+                      placeholder=".dashboard, [data-testid='user-menu']"
+                    />
+                  </Form.Item>
+                </Col>
+              ) : null}
             </Row>
             <Row gutter={16}>
               <Col
@@ -183,51 +215,57 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
                 </Form.Item>
               </Col>
             </Row>
-            <Row gutter={16}>
-              <Col
-                xs={24}
-                md={12}
-              >
-                <Form.Item label="验证码模式">
-                  <Select
-                    value={login.captchaMode}
-                    onChange={(value) =>
-                      onChange({
-                        ...login,
-                        captchaMode: value
-                      })
-                    }
-                    options={[
-                      { label: "手动输入", value: "manual" },
-                      { label: "OCR 占位", value: "ocr" }
-                    ]}
-                  />
-                </Form.Item>
-              </Col>
-              <Col
-                xs={24}
-                md={12}
-              >
-                <Form.Item label="验证码选择器">
-                  <Input
-                    value={login.captchaSelector}
-                    onChange={(event) =>
-                      onChange({
-                        ...login,
-                        captchaSelector: event.target.value,
-                        captchaEnabled: Boolean(event.target.value.trim())
-                      })
-                    }
-                    placeholder="有验证码时再填写"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+            {!simpleMode ? (
+              <Row gutter={16}>
+                <Col
+                  xs={24}
+                  md={12}
+                >
+                  <Form.Item label="验证码模式">
+                    <Select
+                      value={login.captchaMode}
+                      onChange={(value) =>
+                        onChange({
+                          ...login,
+                          captchaMode: value
+                        })
+                      }
+                      options={[
+                        { label: "手动输入", value: "manual" },
+                        { label: "OCR 占位", value: "ocr" }
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col
+                  xs={24}
+                  md={12}
+                >
+                  <Form.Item label="验证码选择器">
+                    <Input
+                      value={login.captchaSelector}
+                      onChange={(event) =>
+                        onChange({
+                          ...login,
+                          captchaSelector: event.target.value,
+                          captchaEnabled: Boolean(event.target.value.trim())
+                        })
+                      }
+                      placeholder="有验证码时再填写"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            ) : (
+              <Paragraph className="muted-copy">
+                页面有验证码、滑块或复杂跳转时，再切到专业模式补充高级登录字段。
+              </Paragraph>
+            )}
           </Form>
         </Card>
       ) : null}
 
-      {login.method === "wallet" ? (
+      {login.method === "wallet" && !simpleMode ? (
         <Card title="私钥钱包登录">
           <Form layout="vertical">
             <Row gutter={16}>
@@ -449,53 +487,59 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
                 </Form.Item>
               </Col>
             </Row>
-            <Form.Item label="Cookie 字符串">
-              <Input.TextArea
-                rows={4}
-                value={login.cookieString}
-                onChange={(event) =>
-                  onChange({
-                    ...login,
-                    cookieString: event.target.value
-                  })
-                }
-                placeholder="sessionid=abc; csrftoken=def"
-              />
-            </Form.Item>
-            <Row gutter={16}>
-              <Col
-                xs={24}
-                md={8}
-              >
-                <Form.Item label="Header 名称">
-                  <Input
-                    value={login.headerName}
-                    onChange={(event) =>
-                      onChange({
-                        ...login,
-                        headerName: event.target.value
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col
-                xs={24}
-                md={16}
-              >
-                <Form.Item label="Token">
-                  <Input.Password
-                    value={login.token}
-                    onChange={(event) =>
-                      onChange({
-                        ...login,
-                        token: event.target.value
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+            {login.injectionMode === "cookie" ? (
+              <Form.Item label="Cookie 字符串">
+                <Input.TextArea
+                  rows={4}
+                  value={login.cookieString}
+                  onChange={(event) =>
+                    onChange({
+                      ...login,
+                      cookieString: event.target.value
+                    })
+                  }
+                  placeholder="sessionid=abc; csrftoken=def"
+                />
+              </Form.Item>
+            ) : null}
+            {login.injectionMode === "header" ? (
+              <Row gutter={16}>
+                {!simpleMode ? (
+                  <Col
+                    xs={24}
+                    md={8}
+                  >
+                    <Form.Item label="Header 名称">
+                      <Input
+                        value={login.headerName}
+                        onChange={(event) =>
+                          onChange({
+                            ...login,
+                            headerName: event.target.value
+                          })
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+                <Col
+                  xs={24}
+                  md={simpleMode ? 24 : 16}
+                >
+                  <Form.Item label="Token">
+                    <Input.Password
+                      value={login.token}
+                      onChange={(event) =>
+                        onChange({
+                          ...login,
+                          token: event.target.value
+                        })
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            ) : null}
           </Form>
           <Paragraph className="muted-copy">
             如果要同时驱动浏览器和 API 请求，推荐使用 Cookie 注入；如果只打接口，Header 更直接。
@@ -503,7 +547,7 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
         </Card>
       ) : null}
 
-      <Card title="设计建议">
+      <Card title={simpleMode ? "新手建议" : "设计建议"}>
         <Space
           direction="vertical"
           size={8}

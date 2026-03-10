@@ -5,13 +5,15 @@ const { Paragraph, Text } = Typography;
 
 interface GlobalSettingsStepProps {
   config: ScriptConfig;
+  simpleMode: boolean;
+  onSwitchToAdvanced: () => void;
   onMetaChange: (patch: Partial<ScriptConfig["meta"]>) => void;
   onGlobalChange: (patch: Partial<ScriptConfig["global"]>) => void;
   onChooseOutputDirectory: () => void;
 }
 
 export function GlobalSettingsStep(props: GlobalSettingsStepProps) {
-  const { config, onMetaChange, onGlobalChange, onChooseOutputDirectory } = props;
+  const { config, simpleMode, onSwitchToAdvanced, onMetaChange, onGlobalChange, onChooseOutputDirectory } = props;
 
   return (
     <Space
@@ -60,83 +62,99 @@ export function GlobalSettingsStep(props: GlobalSettingsStepProps) {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item label="说明">
-            <Input.TextArea
-              rows={3}
-              value={config.meta.description}
-              onChange={(event) =>
-                onMetaChange({
-                  description: event.target.value
-                })
-              }
-              placeholder="记录脚本目标、站点信息和注意事项"
-            />
-          </Form.Item>
+          {!simpleMode ? (
+            <Form.Item label="说明">
+              <Input.TextArea
+                rows={3}
+                value={config.meta.description}
+                onChange={(event) =>
+                  onMetaChange({
+                    description: event.target.value
+                  })
+                }
+                placeholder="记录脚本目标、站点信息和注意事项"
+              />
+            </Form.Item>
+          ) : null}
         </Form>
       </Card>
 
-      <Card title="执行策略">
-        <Form layout="vertical">
-          <Row gutter={16}>
-            <Col
-              xs={24}
-              md={8}
-            >
-              <Form.Item label="默认超时（秒）">
-                <InputNumber
-                  min={1}
-                  max={600}
-                  value={config.global.timeout}
-                  onChange={(value) =>
-                    onGlobalChange({
-                      timeout: value || 30
-                    })
-                  }
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col
-              xs={24}
-              md={8}
-            >
-              <Form.Item label="重试次数">
-                <InputNumber
-                  min={0}
-                  max={20}
-                  value={config.global.retryTimes}
-                  onChange={(value) =>
-                    onGlobalChange({
-                      retryTimes: value || 0
-                    })
-                  }
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col
-              xs={24}
-              md={8}
-            >
-              <Form.Item label="随机延迟">
-                <Switch
-                  checked={config.global.randomDelay}
-                  onChange={(checked) => onGlobalChange({ randomDelay: checked })}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item label="浏览器无头模式">
-            <Switch
-              checked={config.global.headless}
-              onChange={(checked) => onGlobalChange({ headless: checked })}
-            />
-          </Form.Item>
-        </Form>
-        <Paragraph className="muted-copy">
-          小白第一次使用建议保持默认。只有在你已经确认脚本能跑通后，再调整重试、延迟和无头模式。
-        </Paragraph>
-      </Card>
+      {simpleMode ? (
+        <Alert
+          type="success"
+          showIcon
+          message="超简模式已自动使用默认执行策略"
+          description={
+            <Space direction="vertical">
+              <Text>默认超时、重试、随机延迟和无头模式先不用管，等脚本跑通后再调。</Text>
+              <Button onClick={onSwitchToAdvanced}>切到专业模式后再细调</Button>
+            </Space>
+          }
+        />
+      ) : (
+        <Card title="执行策略">
+          <Form layout="vertical">
+            <Row gutter={16}>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Form.Item label="默认超时（秒）">
+                  <InputNumber
+                    min={1}
+                    max={600}
+                    value={config.global.timeout}
+                    onChange={(value) =>
+                      onGlobalChange({
+                        timeout: value || 30
+                      })
+                    }
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Form.Item label="重试次数">
+                  <InputNumber
+                    min={0}
+                    max={20}
+                    value={config.global.retryTimes}
+                    onChange={(value) =>
+                      onGlobalChange({
+                        retryTimes: value || 0
+                      })
+                    }
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Form.Item label="随机延迟">
+                  <Switch
+                    checked={config.global.randomDelay}
+                    onChange={(checked) => onGlobalChange({ randomDelay: checked })}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item label="浏览器无头模式">
+              <Switch
+                checked={config.global.headless}
+                onChange={(checked) => onGlobalChange({ headless: checked })}
+              />
+            </Form.Item>
+          </Form>
+          <Paragraph className="muted-copy">
+            小白第一次使用建议保持默认。只有在你已经确认脚本能跑通后，再调整重试、延迟和无头模式。
+          </Paragraph>
+        </Card>
+      )}
 
       <Alert
         type="warning"

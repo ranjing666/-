@@ -4,6 +4,7 @@ import {
   Layout,
   Menu,
   Modal,
+  Segmented,
   Space,
   Typography,
   theme
@@ -16,6 +17,7 @@ import { LoginSettingsStep } from "./components/LoginSettingsStep";
 import { ProxySettingsStep } from "./components/ProxySettingsStep";
 import { TaskListEditor } from "./components/TaskListEditor";
 import { TemplateHub } from "./components/TemplateHub";
+import { UiMode, usesAdvancedLogin, usesAdvancedProxy } from "./lib/uiMode";
 import {
   replaceConfig,
   resetConfig,
@@ -98,8 +100,11 @@ export default function App() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [didApplyInitialDefaults, setDidApplyInitialDefaults] = useState(false);
+  const [uiMode, setUiMode] = useState<UiMode>(() =>
+    window.localStorage.getItem("script-generator-ui-mode") === "advanced" ? "advanced" : "simple"
+  );
   const { token } = theme.useToken();
+  const simpleMode = uiMode === "simple";
 
   const steps = useMemo(
     () => [
@@ -131,20 +136,16 @@ export default function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!appInfo || didApplyInitialDefaults) {
+    if (!appInfo || config.global.outputDirectory.trim()) {
       return;
     }
 
-    if (!config.global.outputDirectory.trim()) {
-      dispatch(
-        updateGlobal({
-          outputDirectory: appInfo.defaultOutputPath
-        })
-      );
-    }
-
-    setDidApplyInitialDefaults(true);
-  }, [appInfo, config.global.outputDirectory, didApplyInitialDefaults, dispatch]);
+    dispatch(
+      updateGlobal({
+        outputDirectory: appInfo.defaultOutputPath
+      })
+    );
+  }, [appInfo, config.global.outputDirectory, dispatch]);
 
   useEffect(() => {
     if (!builtinTemplates.length) {
@@ -171,6 +172,11 @@ export default function App() {
   const closeOnboarding = () => {
     setOnboardingOpen(false);
     window.localStorage.setItem("script-generator-onboarding-seen", "1");
+  };
+
+  const switchUiMode = (mode: UiMode) => {
+    setUiMode(mode);
+    window.localStorage.setItem("script-generator-ui-mode", mode);
   };
 
   const handleStartFromExample = async () => {
@@ -265,6 +271,10 @@ export default function App() {
   };
 
   const currentStepTitle = steps[selectedStep]?.title ?? "";
+  const advancedModeHints = [
+    simpleMode && usesAdvancedLogin(config.login) ? "当前配置用了私钥钱包登录" : null,
+    simpleMode && usesAdvancedProxy(config.proxy) ? "当前配置用了代理池" : null
+  ].filter(Boolean);
   const stepStatuses = [
     {
       label: "基础信息",
@@ -438,8 +448,34 @@ export default function App() {
               {currentStepTitle}
             </Title>
           </div>
-          <Space wrap>
-            <Button onClick={() => dispatch(resetConfig())}>重置配置</Button>
+          <Space wrap align="start">
+            <Space
+              direction="vertical"
+              size={4}
+              className="mode-switch-group"
+            >
+              <Text className="eyebrow">界面模式</Text>
+              <Segmented
+                value={uiMode}
+                onChange={(value) => switchUiMode(value as UiMode)}
+                options={[
+                  { label: "超简模式", value: "simple" },
+                  { label: "专业模式", value: "advanced" }
+                ]}
+              />
+              <Text type="secondary" className="mode-summary">
+                {simpleMode ? "只显示最常用入口，适合第一次使用" : "显示全部配置项，适合精细调整"}
+              </Text>
+            </Space>
+            <Button
+              onClick={() => {
+                dispatch(resetConfig());
+                dispatch(setGenerationResult(null));
+                setProxyValidation(null);
+              }}
+            >
+              重置配置
+            </Button>
             <Button
               onClick={() => {
                 setSaveName(config.meta.name);
@@ -454,6 +490,13 @@ export default function App() {
         </Header>
 
         <Content className="app-content">
+          {advancedModeHints.length > 0 ? (
+            <div className="mode-hint-banner">
+              <Text strong>当前仍有专业配置：</Text>
+              <Text type="secondary">{advancedModeHints.join("，")}。如果要继续编辑这些内容，请切到专业模式。</Text>
+            </div>
+          ) : null}
+
           <BeginnerGuidePanel
             title={beginnerGuide.title}
             summary={beginnerGuide.summary}
@@ -490,6 +533,8 @@ export default function App() {
           {selectedStep === 1 ? (
             <GlobalSettingsStep
               config={config}
+              simpleMode={simpleMode}
+              onSwitchToAdvanced={() => switchUiMode("advanced")}
               onMetaChange={(patch) => dispatch(updateMeta(patch))}
               onGlobalChange={(patch) => dispatch(updateGlobal(patch))}
               onChooseOutputDirectory={handleChooseOutputDirectory}
@@ -499,6 +544,8 @@ export default function App() {
           {selectedStep === 2 ? (
             <LoginSettingsStep
               login={config.login}
+              simpleMode={simpleMode}
+              onSwitchToAdvanced={() => switchUiMode("advanced")}
               onChange={(login) => dispatch(updateLogin(login))}
             />
           ) : null}
@@ -507,6 +554,8 @@ export default function App() {
             <ProxySettingsStep
               proxy={config.proxy}
               validationResult={proxyValidation}
+              simpleMode={simpleMode}
+              onSwitchToAdvanced={() => switchUiMode("advanced")}
               onChange={(patch) => dispatch(updateProxy(patch))}
               onValidate={handleValidateProxy}
             />
@@ -515,6 +564,8 @@ export default function App() {
           {selectedStep === 4 ? (
             <TaskListEditor
               tasks={config.tasks}
+              simpleMode={simpleMode}
+              onSwitchToAdvanced={() => switchUiMode("advanced")}
               onChange={(tasks) => dispatch(setTasks(tasks))}
             />
           ) : null}

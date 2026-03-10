@@ -1,6 +1,6 @@
 {
   "name": "script-generator-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "零代码可视化脚本生成器桌面应用",
   "main": "electron/main.cjs",
   "type": "module",

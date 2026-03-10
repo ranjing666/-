@@ -1,4 +1,5 @@
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -13,6 +14,7 @@ import {
   Typography
 } from "antd";
 import { createDefaultTask } from "../lib/defaults";
+import { SIMPLE_TASK_TYPES, hasAdvancedTasks, isAdvancedTaskType } from "../lib/uiMode";
 import type { ComparisonOperator, TaskItem, TaskType } from "../types/config";
 
 const { Paragraph, Text } = Typography;
@@ -30,6 +32,23 @@ const taskTypeOptions: { label: string; value: TaskType }[] = [
   { label: "API 请求", value: "api_request" }
 ];
 
+const simpleTaskTypeOptions = taskTypeOptions.filter((option) =>
+  SIMPLE_TASK_TYPES.includes(option.value)
+);
+
+function getTaskTypeOptions(simpleMode: boolean, currentType?: TaskType) {
+  if (!simpleMode) {
+    return taskTypeOptions;
+  }
+
+  if (!currentType || !isAdvancedTaskType(currentType)) {
+    return simpleTaskTypeOptions;
+  }
+
+  const currentOption = taskTypeOptions.find((option) => option.value === currentType);
+  return currentOption ? [...simpleTaskTypeOptions, currentOption] : simpleTaskTypeOptions;
+}
+
 const comparisonOptions: { label: string; value: ComparisonOperator }[] = [
   { label: "存在", value: "exists" },
   { label: "等于", value: "equals" },
@@ -40,6 +59,8 @@ const comparisonOptions: { label: string; value: ComparisonOperator }[] = [
 interface TaskListEditorProps {
   tasks: TaskItem[];
   onChange: (tasks: TaskItem[]) => void;
+  simpleMode?: boolean;
+  onSwitchToAdvanced?: () => void;
   depth?: number;
   title?: string;
 }
@@ -55,7 +76,9 @@ function swap<T>(items: T[], fromIndex: number, toIndex: number) {
 }
 
 export function TaskListEditor(props: TaskListEditorProps) {
-  const { tasks, onChange, depth = 0, title = "任务序列" } = props;
+  const { tasks, onChange, simpleMode = false, onSwitchToAdvanced, depth = 0, title = "任务序列" } = props;
+  const addableTaskOptions = getTaskTypeOptions(simpleMode);
+  const showAdvancedTaskWarning = simpleMode && depth === 0 && hasAdvancedTasks(tasks);
 
   const addTask = (type: TaskType) => {
     onChange([...cloneTasks(tasks), createDefaultTask(type)]);
@@ -90,21 +113,42 @@ export function TaskListEditor(props: TaskListEditorProps) {
         <Select
           placeholder="添加步骤"
           style={{ width: 180 }}
-          options={taskTypeOptions}
+          options={addableTaskOptions}
           onChange={(value) => addTask(value)}
         />
       }
     >
+      {showAdvancedTaskWarning ? (
+        <Alert
+          type="warning"
+          showIcon
+          message="当前任务里包含专业模式操作"
+          description={
+            <Space direction="vertical">
+              <Text>条件分支、循环、执行 JS 和 API 请求不会被删除，但超简模式不会再主动推荐你新增这些步骤。</Text>
+              {onSwitchToAdvanced ? <Button onClick={onSwitchToAdvanced}>切到专业模式继续编辑</Button> : null}
+            </Space>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
+
       {depth === 0 ? (
         <Card className="task-intro-card">
           <Space
             direction="vertical"
             size={8}
           >
-            <Text strong>最容易上手的任务顺序：</Text>
-            <Text>访问页面、点击元素、等待提示、提取结果。</Text>
+            <Text strong>{simpleMode ? "超简模式推荐顺序：" : "最容易上手的任务顺序："}</Text>
+            <Text>
+              {simpleMode
+                ? "访问页面、点击元素、输入文本、等待、提取结果。"
+                : "访问页面、点击元素、等待提示、提取结果。"}
+            </Text>
             <Text className="muted-copy">
-              第一次不要一口气加太多步骤。先做出一个最短流程，确认能生成，再慢慢加条件和循环。
+              {simpleMode
+                ? "超简模式只显示最常用的 5 种操作。先把一条最短流程跑通，再切到专业模式加条件、循环和接口请求。"
+                : "第一次不要一口气加太多步骤。先做出一个最短流程，确认能生成，再慢慢加条件和循环。"}
             </Text>
           </Space>
         </Card>
@@ -144,7 +188,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
               <Space wrap>
                 <Select
                   value={task.type}
-                  options={taskTypeOptions}
+                  options={getTaskTypeOptions(simpleMode, task.type)}
                   onChange={(value) => changeTaskType(index, value)}
                   style={{ width: 160 }}
                 />
@@ -174,7 +218,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
                 <Row gutter={16}>
                   <Col
                     xs={24}
-                    md={18}
+                    md={simpleMode ? 24 : 18}
                   >
                     <Form.Item label="URL">
                       <Input
@@ -189,27 +233,29 @@ export function TaskListEditor(props: TaskListEditorProps) {
                       />
                     </Form.Item>
                   </Col>
-                  <Col
-                    xs={24}
-                    md={6}
-                  >
-                    <Form.Item label="等待策略">
-                      <Select
-                        value={task.waitUntil}
-                        onChange={(value) =>
-                          updateTask(index, (current) => ({
-                            ...current,
-                            waitUntil: value
-                          }))
-                        }
-                        options={[
-                          { label: "load", value: "load" },
-                          { label: "domcontentloaded", value: "domcontentloaded" },
-                          { label: "networkidle", value: "networkidle" }
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {!simpleMode ? (
+                    <Col
+                      xs={24}
+                      md={6}
+                    >
+                      <Form.Item label="等待策略">
+                        <Select
+                          value={task.waitUntil}
+                          onChange={(value) =>
+                            updateTask(index, (current) => ({
+                              ...current,
+                              waitUntil: value
+                            }))
+                          }
+                          options={[
+                            { label: "load", value: "load" },
+                            { label: "domcontentloaded", value: "domcontentloaded" },
+                            { label: "networkidle", value: "networkidle" }
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  ) : null}
                 </Row>
               ) : null}
 
@@ -217,7 +263,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
                 <Row gutter={16}>
                   <Col
                     xs={24}
-                    md={14}
+                    md={simpleMode ? 24 : 14}
                   >
                     <Form.Item label="元素选择器">
                       <Input
@@ -231,42 +277,46 @@ export function TaskListEditor(props: TaskListEditorProps) {
                       />
                     </Form.Item>
                   </Col>
-                  <Col
-                    xs={12}
-                    md={5}
-                  >
-                    <Form.Item label="超时（秒）">
-                      <InputNumber
-                        min={1}
-                        value={task.timeout}
-                        onChange={(value) =>
-                          updateTask(index, (current) => ({
-                            ...current,
-                            timeout: value || 1
-                          }))
-                        }
-                        style={{ width: "100%" }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col
-                    xs={12}
-                    md={5}
-                  >
-                    <Form.Item label="元素索引">
-                      <InputNumber
-                        min={0}
-                        value={task.index}
-                        onChange={(value) =>
-                          updateTask(index, (current) => ({
-                            ...current,
-                            index: value || 0
-                          }))
-                        }
-                        style={{ width: "100%" }}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {!simpleMode ? (
+                    <>
+                      <Col
+                        xs={12}
+                        md={5}
+                      >
+                        <Form.Item label="超时（秒）">
+                          <InputNumber
+                            min={1}
+                            value={task.timeout}
+                            onChange={(value) =>
+                              updateTask(index, (current) => ({
+                                ...current,
+                                timeout: value || 1
+                              }))
+                            }
+                            style={{ width: "100%" }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col
+                        xs={12}
+                        md={5}
+                      >
+                        <Form.Item label="元素索引">
+                          <InputNumber
+                            min={0}
+                            value={task.index}
+                            onChange={(value) =>
+                              updateTask(index, (current) => ({
+                                ...current,
+                                index: value || 0
+                              }))
+                            }
+                            style={{ width: "100%" }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  ) : null}
                 </Row>
               ) : null}
 
@@ -274,7 +324,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
                 <Row gutter={16}>
                   <Col
                     xs={24}
-                    md={10}
+                    md={simpleMode ? 12 : 10}
                   >
                     <Form.Item label="元素选择器">
                       <Input
@@ -290,7 +340,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
                   </Col>
                   <Col
                     xs={24}
-                    md={10}
+                    md={simpleMode ? 12 : 10}
                   >
                     <Form.Item label="输入值">
                       <Input
@@ -305,26 +355,28 @@ export function TaskListEditor(props: TaskListEditorProps) {
                       />
                     </Form.Item>
                   </Col>
-                  <Col
-                    xs={24}
-                    md={4}
-                  >
-                    <Form.Item label="清空后再输入">
-                      <Select
-                        value={task.clearFirst ? "yes" : "no"}
-                        onChange={(value) =>
-                          updateTask(index, (current) => ({
-                            ...current,
-                            clearFirst: value === "yes"
-                          }))
-                        }
-                        options={[
-                          { label: "是", value: "yes" },
-                          { label: "否", value: "no" }
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {!simpleMode ? (
+                    <Col
+                      xs={24}
+                      md={4}
+                    >
+                      <Form.Item label="清空后再输入">
+                        <Select
+                          value={task.clearFirst ? "yes" : "no"}
+                          onChange={(value) =>
+                            updateTask(index, (current) => ({
+                              ...current,
+                              clearFirst: value === "yes"
+                            }))
+                          }
+                          options={[
+                            { label: "是", value: "yes" },
+                            { label: "否", value: "no" }
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  ) : null}
                 </Row>
               ) : null}
 
@@ -431,6 +483,7 @@ export function TaskListEditor(props: TaskListEditorProps) {
                     <Form.Item label="等待超时（秒）">
                       <InputNumber
                         min={1}
+                        disabled={simpleMode && task.mode !== "selector"}
                         value={task.timeout}
                         onChange={(value) =>
                           updateTask(index, (current) => ({
@@ -613,6 +666,8 @@ export function TaskListEditor(props: TaskListEditorProps) {
                   )}
                   <Divider>满足条件时</Divider>
                   <TaskListEditor
+                    simpleMode={simpleMode}
+                    onSwitchToAdvanced={onSwitchToAdvanced}
                     depth={depth + 1}
                     title="Then 子任务"
                     tasks={task.thenTasks}
@@ -625,6 +680,8 @@ export function TaskListEditor(props: TaskListEditorProps) {
                   />
                   <Divider>不满足条件时</Divider>
                   <TaskListEditor
+                    simpleMode={simpleMode}
+                    onSwitchToAdvanced={onSwitchToAdvanced}
                     depth={depth + 1}
                     title="Else 子任务"
                     tasks={task.elseTasks}
@@ -737,6 +794,8 @@ export function TaskListEditor(props: TaskListEditorProps) {
                     </Row>
                   ) : null}
                   <TaskListEditor
+                    simpleMode={simpleMode}
+                    onSwitchToAdvanced={onSwitchToAdvanced}
                     depth={depth + 1}
                     title="循环体任务"
                     tasks={task.tasks}
