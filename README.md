@@ -42,6 +42,14 @@ npm run package:engine
 npm run dist
 ```
 
+## 上传 GitHub Release
+
+```powershell
+npm run publish:release
+```
+
+这条命令会先重新打包，再把 `dist` 中的 Windows 安装包、`.blockmap` 和 `latest.yml` 上传到当前 GitHub 仓库的 Release。
+
 ## 打包产物
 
 - Windows 安装包：`dist/脚本生成器 Setup 0.1.0.exe`

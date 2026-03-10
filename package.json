@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",
+    "release:github": "powershell -ExecutionPolicy Bypass -File scripts/publish_release.ps1",
+    "publish:release": "npm run dist && npm run release:github",
     "setup:python": "python -m pip install -r python_engine/requirements-dev.txt",
     "package:engine": "python scripts/build_engine.py"
   },
