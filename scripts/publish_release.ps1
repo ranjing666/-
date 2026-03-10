@@ -117,6 +117,8 @@ $uploadUrl = $release.upload_url -replace "\{\?name,label\}", ""
 
 foreach ($assetPath in $assets) {
   $assetName = Split-Path $assetPath -Leaf
+  $encodedAssetName = [Uri]::EscapeDataString($assetName)
+  $assetUploadUrl = "${uploadUrl}?name=$encodedAssetName"
   $existing = @($release.assets) | Where-Object { $_.name -eq $assetName }
   foreach ($asset in $existing) {
     Invoke-RestMethod `
@@ -133,7 +135,7 @@ foreach ($assetPath in $assets) {
 
   Invoke-RestMethod `
     -Method Post `
-    -Uri "$uploadUrl?name=$([Uri]::EscapeDataString($assetName))" `
+    -Uri $assetUploadUrl `
     -Headers $uploadHeaders `
     -InFile $assetPath | Out-Null
 }
