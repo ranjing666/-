@@ -133,11 +133,30 @@ foreach ($assetPath in $assets) {
     "Content-Type" = "application/octet-stream"
   }
 
-  Invoke-RestMethod `
-    -Method Post `
-    -Uri $assetUploadUrl `
-    -Headers $uploadHeaders `
-    -InFile $assetPath | Out-Null
+  $curlArgs = @(
+    "--silent",
+    "--show-error",
+    "--fail",
+    "--location",
+    "--request",
+    "POST",
+    "--header",
+    "Authorization: Bearer $token",
+    "--header",
+    "Accept: application/vnd.github+json",
+    "--header",
+    "Content-Type: application/octet-stream",
+    "--data-binary",
+    "@$assetPath",
+    "--output",
+    "NUL",
+    $assetUploadUrl
+  )
+
+  & curl.exe @curlArgs
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to upload asset: $assetName"
+  }
 }
 
 $releaseUrl = $release.html_url
