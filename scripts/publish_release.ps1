@@ -55,6 +55,53 @@ function Invoke-GitHubJson {
     -ContentType "application/json"
 }
 
+function Upload-ReleaseAsset {
+  param(
+    [string]$AssetPath,
+    [string]$AssetName,
+    [string]$AssetUploadUrl,
+    [string]$Token
+  )
+
+  $curlArgs = @(
+    "--silent",
+    "--show-error",
+    "--fail",
+    "--location",
+    "--retry",
+    "3",
+    "--retry-all-errors",
+    "--request",
+    "POST",
+    "--header",
+    "Authorization: Bearer $Token",
+    "--header",
+    "Accept: application/vnd.github+json",
+    "--header",
+    "Content-Type: application/octet-stream",
+    "--data-binary",
+    "@$AssetPath",
+    "--output",
+    "NUL",
+    $AssetUploadUrl
+  )
+
+  & curl.exe @curlArgs
+  if ($LASTEXITCODE -eq 0) {
+    return
+  }
+
+  Invoke-RestMethod `
+    -Method Post `
+    -Uri $AssetUploadUrl `
+    -Headers @{
+      Authorization = "Bearer $Token"
+      Accept = "application/vnd.github+json"
+    } `
+    -ContentType "application/octet-stream" `
+    -InFile $AssetPath | Out-Null
+}
+
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
 
@@ -137,36 +184,11 @@ foreach ($asset in $assets) {
       -Headers $headers | Out-Null
   }
 
-  $uploadHeaders = @{
-    Authorization = "Bearer $token"
-    Accept = "application/vnd.github+json"
-    "Content-Type" = "application/octet-stream"
-  }
-
-  $curlArgs = @(
-    "--silent",
-    "--show-error",
-    "--fail",
-    "--location",
-    "--request",
-    "POST",
-    "--header",
-    "Authorization: Bearer $token",
-    "--header",
-    "Accept: application/vnd.github+json",
-    "--header",
-    "Content-Type: application/octet-stream",
-    "--data-binary",
-    "@$assetPath",
-    "--output",
-    "NUL",
-    $assetUploadUrl
-  )
-
-  & curl.exe @curlArgs
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to upload asset: $assetName"
-  }
+  Upload-ReleaseAsset `
+    -AssetPath $assetPath `
+    -AssetName $assetName `
+    -AssetUploadUrl $assetUploadUrl `
+    -Token $token
 }
 
 $releaseUrl = $release.html_url
