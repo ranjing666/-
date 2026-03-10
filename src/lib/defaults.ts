@@ -9,6 +9,7 @@ import type {
   LoopTask,
   NavigateTask,
   NoLoginConfig,
+  PasswordLoginConfig,
   ProxyConfig,
   ScriptConfig,
   SelectTask,
@@ -16,6 +17,8 @@ import type {
   TaskType,
   WaitTask
 } from "../types/config";
+
+export type StarterPreset = "browse" | "click-flow" | "extract-text" | "password-login";
 
 function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -197,5 +200,90 @@ export function createDefaultConfig(): ScriptConfig {
     login: defaultLoginConfig,
     proxy: defaultProxyConfig,
     tasks: [createDefaultTask("navigate")]
+  };
+}
+
+export function createStarterConfig(preset: StarterPreset): ScriptConfig {
+  const config = createDefaultConfig();
+
+  if (preset === "browse") {
+    const navigateTask = createDefaultTask("navigate") as NavigateTask;
+    navigateTask.label = "打开目标页面";
+    navigateTask.url = "https://example.com";
+
+    return {
+      ...config,
+      meta: {
+        name: "打开网页脚本",
+        description: "最简单的起步模板，只做一件事：打开一个网页。"
+      },
+      tasks: [navigateTask]
+    };
+  }
+
+  if (preset === "click-flow") {
+    const navigateTask = createDefaultTask("navigate") as NavigateTask;
+    navigateTask.label = "打开任务页面";
+    navigateTask.url = "https://example.com";
+
+    const clickTask = createDefaultTask("click") as ClickTask;
+    clickTask.label = "点击目标按钮";
+    clickTask.selector = "button, a";
+
+    const waitTask = createDefaultTask("wait") as WaitTask;
+    waitTask.label = "等待页面响应";
+    waitTask.mode = "duration";
+    waitTask.durationSeconds = 2;
+
+    return {
+      ...config,
+      meta: {
+        name: "打开并点击脚本",
+        description: "适合签到、领取或进入下一步这类简单点击流程。"
+      },
+      tasks: [navigateTask, clickTask, waitTask]
+    };
+  }
+
+  if (preset === "extract-text") {
+    const navigateTask = createDefaultTask("navigate") as NavigateTask;
+    navigateTask.label = "打开目标页面";
+    navigateTask.url = "https://example.com";
+
+    const extractTask = createDefaultTask("extract") as ExtractTask;
+    extractTask.label = "提取页面标题";
+    extractTask.selector = "h1";
+    extractTask.attribute = "text";
+    extractTask.variable = "page_title";
+
+    return {
+      ...config,
+      meta: {
+        name: "提取页面文字脚本",
+        description: "适合新手练习采集页面文字或链接。"
+      },
+      tasks: [navigateTask, extractTask]
+    };
+  }
+
+  const passwordLogin = createLoginConfig("password") as PasswordLoginConfig;
+
+  return {
+    ...config,
+    meta: {
+      name: "账号密码登录脚本",
+      description: "已预填常见登录字段，适合普通账号密码网站。"
+    },
+    login: {
+      ...passwordLogin,
+      url: "https://example.com/login"
+    },
+    tasks: [
+      {
+        ...(createDefaultTask("navigate") as NavigateTask),
+        label: "登录后打开首页",
+        url: "https://example.com/dashboard"
+      }
+    ]
   };
 }

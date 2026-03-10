@@ -154,6 +154,25 @@ export function TaskListEditor(props: TaskListEditorProps) {
         </Card>
       ) : null}
 
+      {simpleMode && depth === 0 ? (
+        <Card title="快捷添加">
+          <Space wrap>
+            {simpleTaskTypeOptions.map((option) => (
+              <Button
+                key={option.value}
+                size="large"
+                onClick={() => addTask(option.value)}
+              >
+                添加{option.label}
+              </Button>
+            ))}
+          </Space>
+          <Paragraph className="muted-copy" style={{ marginTop: 12, marginBottom: 0 }}>
+            不想管下拉菜单时，直接点上面的按钮就行。
+          </Paragraph>
+        </Card>
+      ) : null}
+
       {tasks.length === 0 ? (
         <Paragraph className="muted-copy">还没有任务步骤，先从右上角添加一个操作。</Paragraph>
       ) : null}

@@ -17,6 +17,7 @@ import { LoginSettingsStep } from "./components/LoginSettingsStep";
 import { ProxySettingsStep } from "./components/ProxySettingsStep";
 import { TaskListEditor } from "./components/TaskListEditor";
 import { TemplateHub } from "./components/TemplateHub";
+import { createStarterConfig, StarterPreset } from "./lib/defaults";
 import { UiMode, usesAdvancedLogin, usesAdvancedProxy } from "./lib/uiMode";
 import {
   replaceConfig,
@@ -270,6 +271,18 @@ export default function App() {
     }
   };
 
+  const handleStartFromPreset = (preset: StarterPreset) => {
+    const nextConfig = withDefaultOutput(createStarterConfig(preset), appInfo?.defaultOutputPath);
+    startTransition(() => {
+      dispatch(replaceConfig(nextConfig));
+      dispatch(setGenerationResult(null));
+    });
+
+    const nextStep = preset === "password-login" ? 2 : 4;
+    dispatch(setSelectedStep(nextStep));
+    message.success("已为你准备好起步模板，直接改成自己的内容就行");
+  };
+
   const currentStepTitle = steps[selectedStep]?.title ?? "";
   const advancedModeHints = [
     simpleMode && usesAdvancedLogin(config.login) ? "当前配置用了私钥钱包登录" : null,
@@ -520,6 +533,7 @@ export default function App() {
                 setSaveModalOpen(true);
               }}
               onStartFromExample={() => void handleStartFromExample()}
+              onStartFromPreset={handleStartFromPreset}
               onContinueBlank={() => dispatch(setSelectedStep(1))}
               onLoadSaved={(id) =>
                 void loadDocument(() => window.scriptGenerator.loadSavedConfig(id))
@@ -575,6 +589,7 @@ export default function App() {
               validationIssues={validationIssues}
               generationResult={generationResult}
               onGenerate={handleGenerateScript}
+              onGoToStep={(step) => dispatch(setSelectedStep(step))}
               onOpenOutputDirectory={() => {
                 if (generationResult) {
                   void window.scriptGenerator.openPath(generationResult.outputDirectory);

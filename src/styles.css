@@ -210,6 +210,10 @@ body {
   background: rgba(255, 252, 247, 0.96);
 }
 
+.ant-list-item .ant-space {
+  max-width: 100%;
+}
+
 .nested-task-card {
   background: rgba(249, 241, 233, 0.8);
   margin-top: 12px;

@@ -9,10 +9,89 @@ interface GenerateStepProps {
   generationResult: GenerationResult | null;
   onGenerate: () => void;
   onOpenOutputDirectory: () => void;
+  onGoToStep: (step: number) => void;
+}
+
+function getIssueTarget(path: string) {
+  const normalized = path.toLowerCase();
+
+  if (
+    normalized.startsWith("/global") ||
+    normalized.startsWith("/meta") ||
+    normalized === "name" ||
+    normalized === "description" ||
+    normalized === "outputdirectory"
+  ) {
+    return { step: 1, label: "基础设置", actionLabel: "去基础设置" };
+  }
+
+  if (
+    normalized.startsWith("/login") ||
+    normalized === "url" ||
+    normalized === "usernameselector" ||
+    normalized === "passwordselector" ||
+    normalized === "submitselector" ||
+    normalized === "username" ||
+    normalized === "password" ||
+    normalized === "privatekeyenvvar"
+  ) {
+    return { step: 2, label: "登录设置", actionLabel: "去登录设置" };
+  }
+
+  if (normalized.startsWith("/proxy")) {
+    return { step: 3, label: "代理设置", actionLabel: "去代理设置" };
+  }
+
+  return { step: 4, label: "任务编辑", actionLabel: "去任务编辑" };
+}
+
+function formatIssuePath(path: string) {
+  if (path === "/tasks") {
+    return "任务步骤";
+  }
+
+  if (path === "/global/outputDirectory") {
+    return "导出目录";
+  }
+
+  if (path.startsWith("/tasks/")) {
+    const parts = path.split("/").filter(Boolean);
+    const taskIndex = Number(parts[1]);
+    const field = parts[2];
+    const fieldMap: Record<string, string> = {
+      url: "网址",
+      selector: "选择器",
+      value: "输入值",
+      attribute: "提取属性",
+      variable: "变量名"
+    };
+
+    if (!Number.isNaN(taskIndex)) {
+      return `第 ${taskIndex + 1} 步的${fieldMap[field] ?? "配置"}`;
+    }
+  }
+
+  if (path.startsWith("/login/")) {
+    const field = path.split("/").filter(Boolean)[1];
+    const fieldMap: Record<string, string> = {
+      url: "登录网址",
+      usernameSelector: "用户名选择器",
+      passwordSelector: "密码选择器",
+      submitSelector: "提交按钮选择器",
+      username: "用户名",
+      password: "密码",
+      cookieString: "Cookie",
+      token: "Token"
+    };
+
+    return fieldMap[field] ?? "登录配置";
+  }
+
+  return path === "/" ? "当前配置" : path.replaceAll("/", " / ");
 }
 
 export function GenerateStep(props: GenerateStepProps) {
-  const { validationIssues, generationResult, onGenerate, onOpenOutputDirectory } = props;
+  const { validationIssues, generationResult, onGenerate, onOpenOutputDirectory, onGoToStep } = props;
   const deferredScript = useDeferredValue(generationResult?.scriptContent ?? "");
 
   return (
@@ -40,8 +119,19 @@ export function GenerateStep(props: GenerateStepProps) {
                 dataSource={validationIssues}
                 renderItem={(item) => (
                   <List.Item>
-                    <Text code>{item.path}</Text>
-                    <Text>{item.message}</Text>
+                    <Space
+                      style={{ width: "100%", justifyContent: "space-between" }}
+                      wrap
+                    >
+                      <Space wrap>
+                        <Tag>{getIssueTarget(item.path).label}</Tag>
+                        <Text strong>{formatIssuePath(item.path)}</Text>
+                        <Text>{item.message}</Text>
+                      </Space>
+                      <Button type="link" onClick={() => onGoToStep(getIssueTarget(item.path).step)}>
+                        {getIssueTarget(item.path).actionLabel}
+                      </Button>
+                    </Space>
                   </List.Item>
                 )}
               />

@@ -1,4 +1,5 @@
 import { Button, Card, Col, Empty, List, Row, Space, Statistic, Tag, Typography } from "antd";
+import type { StarterPreset } from "../lib/defaults";
 import type { ScriptConfig, TemplateSummary } from "../types/config";
 
 const { Paragraph, Text, Title } = Typography;
@@ -12,6 +13,7 @@ interface TemplateHubProps {
   onExport: () => void;
   onSave: () => void;
   onStartFromExample: () => void;
+  onStartFromPreset: (preset: StarterPreset) => void;
   onContinueBlank: () => void;
   onLoadSaved: (id: string) => void;
   onLoadBuiltin: (id: string) => void;
@@ -27,6 +29,7 @@ export function TemplateHub(props: TemplateHubProps) {
     onExport,
     onSave,
     onStartFromExample,
+    onStartFromPreset,
     onContinueBlank,
     onLoadSaved,
     onLoadBuiltin
@@ -119,6 +122,77 @@ export function TemplateHub(props: TemplateHubProps) {
       </Card>
 
       <Row gutter={[20, 20]}>
+        <Col span={24}>
+          <Card title="我现在最想做什么">
+            <Row gutter={[16, 16]}>
+              <Col
+                xs={24}
+                md={12}
+                xl={6}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="blue">最简单</Tag>
+                  <Title level={4}>只打开一个网页</Title>
+                  <Paragraph className="muted-copy">
+                    系统会直接帮你放好“访问页面”步骤，你只要改网址。
+                  </Paragraph>
+                  <Button type="primary" onClick={() => onStartFromPreset("browse")}>
+                    用这个开始
+                  </Button>
+                </Card>
+              </Col>
+              <Col
+                xs={24}
+                md={12}
+                xl={6}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="cyan">最常见</Tag>
+                  <Title level={4}>打开后点一个按钮</Title>
+                  <Paragraph className="muted-copy">
+                    适合签到、领取、确认这类流程，会自动加访问、点击和等待。
+                  </Paragraph>
+                  <Button type="primary" onClick={() => onStartFromPreset("click-flow")}>
+                    用这个开始
+                  </Button>
+                </Card>
+              </Col>
+              <Col
+                xs={24}
+                md={12}
+                xl={6}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="green">采集</Tag>
+                  <Title level={4}>提取页面文字</Title>
+                  <Paragraph className="muted-copy">
+                    适合练手采集，会自动加访问页面和提取变量。
+                  </Paragraph>
+                  <Button type="primary" onClick={() => onStartFromPreset("extract-text")}>
+                    用这个开始
+                  </Button>
+                </Card>
+              </Col>
+              <Col
+                xs={24}
+                md={12}
+                xl={6}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="volcano">登录</Tag>
+                  <Title level={4}>账号密码站点</Title>
+                  <Paragraph className="muted-copy">
+                    自动预填常见登录字段，适合普通账号密码网站起步。
+                  </Paragraph>
+                  <Button type="primary" onClick={() => onStartFromPreset("password-login")}>
+                    用这个开始
+                  </Button>
+                </Card>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
         <Col span={24}>
           <Card title="推荐流程">
             <Row gutter={[16, 16]}>
