@@ -67,10 +67,19 @@ $releaseName = $tagName
 $distDir = Join-Path $root "dist"
 $installerName = "$productName Setup $version.exe"
 $assets = @(
-  (Join-Path $distDir $installerName),
-  (Join-Path $distDir "$installerName.blockmap"),
-  (Join-Path $distDir "latest.yml")
-) | Where-Object { Test-Path $_ }
+  @{
+    path = Join-Path $distDir $installerName
+    uploadName = "script-generator-setup-$version.exe"
+  },
+  @{
+    path = Join-Path $distDir "$installerName.blockmap"
+    uploadName = "script-generator-setup-$version.exe.blockmap"
+  },
+  @{
+    path = Join-Path $distDir "latest.yml"
+    uploadName = "latest.yml"
+  }
+) | Where-Object { Test-Path $_.path }
 
 if (-not (Test-Path (Join-Path $distDir $installerName))) {
   throw "Installer not found: $(Join-Path $distDir $installerName)"
@@ -115,8 +124,9 @@ try {
 
 $uploadUrl = $release.upload_url -replace "\{\?name,label\}", ""
 
-foreach ($assetPath in $assets) {
-  $assetName = Split-Path $assetPath -Leaf
+foreach ($asset in $assets) {
+  $assetPath = $asset.path
+  $assetName = $asset.uploadName
   $encodedAssetName = [Uri]::EscapeDataString($assetName)
   $assetUploadUrl = "${uploadUrl}?name=$encodedAssetName"
   $existing = @($release.assets) | Where-Object { $_.name -eq $assetName }
