@@ -160,6 +160,7 @@ app.whenReady().then(() => {
   ipcMain.handle("app:get-info", () => ({
     isDev,
     userDataPath: app.getPath("userData"),
+    defaultOutputPath: path.join(app.getPath("documents"), "Script Generator Output"),
     appVersion: app.getVersion()
   }));
 

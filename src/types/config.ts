@@ -227,5 +227,6 @@ export interface ProxyValidationResult {
 export interface AppInfo {
   isDev: boolean;
   userDataPath: string;
+  defaultOutputPath: string;
   appVersion: string;
 }

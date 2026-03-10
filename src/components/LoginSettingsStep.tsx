@@ -25,6 +25,19 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
       size={20}
       style={{ width: "100%" }}
     >
+      <Alert
+        type="info"
+        showIcon
+        message="如果你只是第一次体验，先别纠结登录方式"
+        description={
+          <Space direction="vertical">
+            <Text>只想先学会怎么生成脚本：可以先选“无需登录”。</Text>
+            <Text>网站是普通账号密码登录：就选“账号密码”。</Text>
+            <Text>已经抓到 Cookie / Token：优先选“Cookie / Token”。</Text>
+          </Space>
+        }
+      />
+
       <Card title="选择登录方式">
         <Segmented
           value={login.method}
@@ -495,8 +508,8 @@ export function LoginSettingsStep(props: LoginSettingsStepProps) {
           direction="vertical"
           size={8}
         >
-          <Text>账号密码方式适合标准表单登录，可配合后续任务中的等待和提取步骤验证状态。</Text>
-          <Text>钱包场景目前以签名/交易脚手架为主，站点内钱包弹窗接管仍建议预留自定义步骤。</Text>
+          <Text>账号密码方式最适合新手，因为页面行为最好理解，也最容易调试。</Text>
+          <Text>钱包场景目前以签名/交易脚手架为主，不建议第一次就拿它练手。</Text>
           <Text>Cookie / Token 适合已有会话或手工抓包后快速复现。</Text>
         </Space>
       </Card>

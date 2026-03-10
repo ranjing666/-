@@ -19,6 +19,13 @@ export function ProxySettingsStep(props: ProxySettingsStepProps) {
       size={20}
       style={{ width: "100%" }}
     >
+      <Alert
+        type="info"
+        showIcon
+        message="没有代理就保持关闭"
+        description="大部分新手第一次用这个工具时，不需要开代理。只有目标网站限制 IP、或者你明确知道自己需要换出口时，再来配置这里。"
+      />
+
       <Card title="代理总开关">
         <Space
           direction="vertical"
@@ -139,6 +146,7 @@ export function ProxySettingsStep(props: ProxySettingsStepProps) {
           direction="vertical"
           size={8}
         >
+          <Text>第一次跑通脚本前，建议不要加代理，先把流程走通。</Text>
           <Text>代理池模式更适合批量账号或请求频繁的任务。</Text>
           <Text>如果网站同时需要浏览器与接口请求，生成脚本会把同一代理同时配置给 Playwright 与 requests。</Text>
         </Space>

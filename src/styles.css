@@ -91,6 +91,10 @@ body {
 
 .hero-card,
 .metric-card,
+.guide-card,
+.guide-progress-card,
+.quickstart-card,
+.task-intro-card,
 .task-card,
 .nested-task-card,
 .app-content .ant-card,
@@ -104,6 +108,18 @@ body {
   background:
     radial-gradient(circle at top right, rgba(214, 116, 71, 0.18), transparent 24%),
     linear-gradient(135deg, rgba(255, 251, 245, 0.92), rgba(248, 239, 228, 0.96));
+}
+
+.guide-card {
+  background:
+    radial-gradient(circle at top left, rgba(255, 233, 196, 0.65), transparent 30%),
+    linear-gradient(135deg, rgba(255, 251, 244, 0.96), rgba(249, 238, 223, 0.96));
+}
+
+.guide-progress-card,
+.quickstart-card,
+.task-intro-card {
+  background: rgba(255, 252, 247, 0.96);
 }
 
 .metric-card .ant-statistic {
@@ -140,6 +156,35 @@ body {
   gap: 16px;
   align-items: center;
   background: rgba(255, 252, 247, 0.92);
+}
+
+.guide-item,
+.onboarding-item,
+.status-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-row {
+  justify-content: space-between;
+}
+
+.guide-number {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(161, 79, 52, 0.14);
+  color: #7d341d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.onboarding-list {
+  display: grid;
+  gap: 10px;
 }
 
 .task-card {

@@ -11,6 +11,8 @@ interface TemplateHubProps {
   onImport: () => void;
   onExport: () => void;
   onSave: () => void;
+  onStartFromExample: () => void;
+  onContinueBlank: () => void;
   onLoadSaved: (id: string) => void;
   onLoadBuiltin: (id: string) => void;
 }
@@ -24,6 +26,8 @@ export function TemplateHub(props: TemplateHubProps) {
     onImport,
     onExport,
     onSave,
+    onStartFromExample,
+    onContinueBlank,
     onLoadSaved,
     onLoadBuiltin
   } = props;
@@ -45,36 +49,37 @@ export function TemplateHub(props: TemplateHubProps) {
               size={12}
             >
               <Tag className="accent-tag">MVP 工作台</Tag>
-              <Title level={1}>把重复网页操作整理成可维护的 Python 脚本</Title>
+              <Title level={1}>第一次用，先从示例模板开始，不要从空白页硬填</Title>
               <Paragraph className="muted-copy">
-                按向导配置登录、代理、任务步骤和输出目录，桌面端会在本地生成脚本、
-                requirements 和环境变量示例文件。敏感信息只在本机处理。
+                这个工具的正确打开方式不是一上来就自己写任务，而是先载入一个示例，
+                看一遍每一步怎么填，再改成你的站点。桌面端会在本地生成脚本、requirements
+                和环境变量示例文件。
               </Paragraph>
               <Space wrap>
                 <Button
                   type="primary"
                   size="large"
-                  onClick={onSave}
+                  onClick={onStartFromExample}
                 >
-                  保存当前模板
+                  一键体验示例
+                </Button>
+                <Button
+                  size="large"
+                  onClick={onContinueBlank}
+                >
+                  从空白开始
                 </Button>
                 <Button
                   size="large"
                   onClick={onImport}
                 >
-                  导入 JSON 配置
+                  导入别人给的配置
                 </Button>
                 <Button
                   size="large"
-                  onClick={onExport}
+                  onClick={onSave}
                 >
-                  导出当前配置
-                </Button>
-                <Button
-                  size="large"
-                  onClick={onReset}
-                >
-                  新建空白配置
+                  保存当前模板
                 </Button>
               </Space>
             </Space>
@@ -114,6 +119,51 @@ export function TemplateHub(props: TemplateHubProps) {
       </Card>
 
       <Row gutter={[20, 20]}>
+        <Col span={24}>
+          <Card title="推荐流程">
+            <Row gutter={[16, 16]}>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="volcano">步骤 1</Tag>
+                  <Title level={4}>先载入示例</Title>
+                  <Paragraph className="muted-copy">
+                    适合第一次使用。先看系统给你的成品长什么样，再去改自己的网站信息。
+                  </Paragraph>
+                  <Button type="primary" onClick={onStartFromExample}>
+                    载入推荐示例
+                  </Button>
+                </Card>
+              </Col>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="gold">步骤 2</Tag>
+                  <Title level={4}>改 3 个地方</Title>
+                  <Paragraph className="muted-copy">
+                    登录信息、任务步骤、输出目录。其余设置先保持默认，能跑起来更重要。
+                  </Paragraph>
+                </Card>
+              </Col>
+              <Col
+                xs={24}
+                md={8}
+              >
+                <Card className="quickstart-card">
+                  <Tag color="green">步骤 3</Tag>
+                  <Title level={4}>生成脚本</Title>
+                  <Paragraph className="muted-copy">
+                    看到“0 个问题”后点生成脚本，再去输出目录运行。
+                  </Paragraph>
+                </Card>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
         <Col
           xs={24}
           xl={12}

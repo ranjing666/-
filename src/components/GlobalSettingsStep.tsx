@@ -19,6 +19,18 @@ export function GlobalSettingsStep(props: GlobalSettingsStepProps) {
       size={20}
       style={{ width: "100%" }}
     >
+      <Alert
+        type="info"
+        showIcon
+        message="这一步只做两件事就够了"
+        description={
+          <Space direction="vertical">
+            <Text>1. 给这份配置起个名字，方便后面保存和区分。</Text>
+            <Text>2. 确认脚本输出目录。不会选也没关系，系统已经给你准备了默认输出位置。</Text>
+          </Space>
+        }
+      />
+
       <Card title="基础信息">
         <Form layout="vertical">
           <Row gutter={16}>
@@ -122,7 +134,7 @@ export function GlobalSettingsStep(props: GlobalSettingsStepProps) {
           </Form.Item>
         </Form>
         <Paragraph className="muted-copy">
-          无头模式更适合批量任务，关闭后更方便定位页面元素和调试登录流程。
+          小白第一次使用建议保持默认。只有在你已经确认脚本能跑通后，再调整重试、延迟和无头模式。
         </Paragraph>
       </Card>
 

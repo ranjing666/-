@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultConfig, createDefaultTask, createLoginConfig } from "./defaults";
 import { validateConfig } from "./schema";
+import type { NavigateTask } from "../types/config";
 
 describe("validateConfig", () => {
   it("accepts a complete default configuration after choosing output directory", () => {
     const config = createDefaultConfig();
     config.global.outputDirectory = "D:/output";
     config.login = createLoginConfig("none");
-    config.tasks = [createDefaultTask("navigate")];
-    config.tasks[0].url = "https://example.com";
+    const navigateTask = createDefaultTask("navigate") as NavigateTask;
+    navigateTask.url = "https://example.com";
+    config.tasks = [navigateTask];
 
     expect(validateConfig(config)).toEqual([]);
   });

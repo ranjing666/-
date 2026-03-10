@@ -21,6 +21,13 @@ export function GenerateStep(props: GenerateStepProps) {
       size={20}
       style={{ width: "100%" }}
     >
+      <Alert
+        type="info"
+        showIcon
+        message="最后一步你只需要看一件事"
+        description="如果上面的校验提示变成绿色，就直接点“生成脚本”。生成完成后打开输出目录，先看有没有 script.py、requirements.txt 和 .env.example。"
+      />
+
       <Card title="生成前检查">
         {validationIssues.length > 0 ? (
           <Alert

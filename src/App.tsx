@@ -9,6 +9,7 @@ import {
   theme
 } from "antd";
 import { useEffect, useMemo, useState, startTransition } from "react";
+import { BeginnerGuidePanel } from "./components/BeginnerGuidePanel";
 import { GenerateStep } from "./components/GenerateStep";
 import { GlobalSettingsStep } from "./components/GlobalSettingsStep";
 import { LoginSettingsStep } from "./components/LoginSettingsStep";
@@ -39,6 +40,48 @@ function normalizeConfig(document: ScriptConfig | SavedTemplateDocument) {
   return "config" in document ? document.config : document;
 }
 
+function withDefaultOutput(config: ScriptConfig, defaultOutputPath?: string) {
+  if (!defaultOutputPath || config.global.outputDirectory.trim()) {
+    return config;
+  }
+
+  return {
+    ...config,
+    global: {
+      ...config.global,
+      outputDirectory: defaultOutputPath
+    }
+  };
+}
+
+function isLoginReady(config: ScriptConfig) {
+  const login = config.login;
+  if (login.method === "none") {
+    return true;
+  }
+
+  if (login.method === "password") {
+    return Boolean(
+      login.url.trim() &&
+        login.usernameSelector.trim() &&
+        login.passwordSelector.trim() &&
+        login.submitSelector.trim() &&
+        login.username.trim() &&
+        login.password.trim()
+    );
+  }
+
+  if (login.method === "wallet") {
+    return Boolean(login.rpcUrl.trim() && login.privateKeyEnvVar.trim());
+  }
+
+  if (login.method === "cookie") {
+    return Boolean(login.url.trim() && (login.cookieString.trim() || login.token.trim()));
+  }
+
+  return false;
+}
+
 export default function App() {
   const { message } = AntApp.useApp();
   const dispatch = useAppDispatch();
@@ -53,7 +96,9 @@ export default function App() {
   } = useAppSelector((state) => state.scriptGenerator);
   const [proxyValidation, setProxyValidation] = useState<ProxyValidationResult | null>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [didApplyInitialDefaults, setDidApplyInitialDefaults] = useState(false);
   const { token } = theme.useToken();
 
   const steps = useMemo(
@@ -85,15 +130,60 @@ export default function App() {
     })();
   }, [dispatch]);
 
+  useEffect(() => {
+    if (!appInfo || didApplyInitialDefaults) {
+      return;
+    }
+
+    if (!config.global.outputDirectory.trim()) {
+      dispatch(
+        updateGlobal({
+          outputDirectory: appInfo.defaultOutputPath
+        })
+      );
+    }
+
+    setDidApplyInitialDefaults(true);
+  }, [appInfo, config.global.outputDirectory, didApplyInitialDefaults, dispatch]);
+
+  useEffect(() => {
+    if (!builtinTemplates.length) {
+      return;
+    }
+
+    const onboardingSeen = window.localStorage.getItem("script-generator-onboarding-seen");
+    if (!onboardingSeen) {
+      setOnboardingOpen(true);
+    }
+  }, [builtinTemplates.length]);
+
   const loadDocument = async (loader: () => Promise<ScriptConfig | SavedTemplateDocument | null>) => {
     const result = await loader();
     if (!result) {
       return;
     }
     startTransition(() => {
-      dispatch(replaceConfig(normalizeConfig(result)));
+      dispatch(replaceConfig(withDefaultOutput(normalizeConfig(result), appInfo?.defaultOutputPath)));
       dispatch(setGenerationResult(null));
     });
+  };
+
+  const closeOnboarding = () => {
+    setOnboardingOpen(false);
+    window.localStorage.setItem("script-generator-onboarding-seen", "1");
+  };
+
+  const handleStartFromExample = async () => {
+    const recommendedTemplate = builtinTemplates.find((item) => item.id === "daily-checkin") ?? builtinTemplates[0];
+    if (!recommendedTemplate) {
+      message.warning("当前没有可用的示例模板");
+      return;
+    }
+
+    await loadDocument(() => window.scriptGenerator.loadTemplate(recommendedTemplate.id));
+    dispatch(setSelectedStep(1));
+    closeOnboarding();
+    message.success(`已载入示例模板：${recommendedTemplate.name}`);
   };
 
   const handleSaveConfig = async () => {
@@ -175,6 +265,127 @@ export default function App() {
   };
 
   const currentStepTitle = steps[selectedStep]?.title ?? "";
+  const stepStatuses = [
+    {
+      label: "基础信息",
+      done: Boolean(config.meta.name.trim() && config.global.outputDirectory.trim())
+    },
+    {
+      label: "登录方式",
+      done: isLoginReady(config)
+    },
+    {
+      label: "任务步骤",
+      done: config.tasks.length > 0
+    },
+    {
+      label: "可以生成",
+      done: validationIssues.length === 0
+    }
+  ];
+
+  const beginnerGuide = [
+    {
+      title: "第一步不要从空白开始，先载入示例模板",
+      summary: "小白最容易卡在“这一步要填什么”。示例模板能直接告诉你完整配置长什么样，再改成自己的站点更容易。",
+      todo: [
+        "点“一键体验示例”载入现成模板",
+        "先看系统已经帮你填了哪些字段",
+        "再逐步替换成你自己的网址和按钮选择器"
+      ],
+      tip: "如果你已经从别人那里拿到配置 JSON，就用导入，不用自己从头建。",
+      primaryAction: {
+        label: "一键体验示例",
+        onClick: () => void handleStartFromExample()
+      },
+      secondaryAction: {
+        label: "继续空白配置",
+        onClick: () => dispatch(setSelectedStep(1))
+      }
+    },
+    {
+      title: "这一步只管名字和输出目录",
+      summary: "不用急着改高级参数。先确认这份配置叫什么，脚本生成到哪里。",
+      todo: [
+        "确认配置名称，方便保存后区分",
+        "检查输出目录，不会选也可以先用默认目录",
+        "其它开关先保持默认值"
+      ],
+      tip: `默认输出目录已经帮你准备好了：${appInfo?.defaultOutputPath ?? "加载中..."}`,
+      primaryAction: {
+        label: "使用默认输出目录",
+        onClick: () => {
+          if (appInfo?.defaultOutputPath) {
+            dispatch(updateGlobal({ outputDirectory: appInfo.defaultOutputPath }));
+            message.success("已恢复到默认输出目录");
+          }
+        }
+      },
+      secondaryAction: {
+        label: "打开目录选择器",
+        onClick: () => void handleChooseOutputDirectory()
+      }
+    },
+    {
+      title: "登录方式不会选时，先选最简单的",
+      summary: "如果你只是想先学会整个流程，可以先选“无需登录”；普通网站最常见的是“账号密码”。",
+      todo: [
+        "只是练手：先选无需登录",
+        "账号密码站点：填登录页、输入框选择器、账号密码",
+        "Cookie / 钱包只在你明确知道自己需要时再用"
+      ],
+      tip: "第一次不要同时研究登录方式和复杂任务，先把一个最短流程生成出来。",
+      primaryAction: {
+        label: "继续编辑任务",
+        onClick: () => dispatch(setSelectedStep(4))
+      }
+    },
+    {
+      title: "没有代理就不要开",
+      summary: "大多数第一次使用都不需要代理。把开关保持关闭，先验证功能本身能不能跑通。",
+      todo: [
+        "如果你没有现成代理，保持关闭",
+        "只有明确知道目标站点需要换 IP 时再开启",
+        "开启后先点“测试代理”看是否联通"
+      ],
+      tip: "代理是进阶项，不是必填项。",
+      primaryAction: {
+        label: "保持关闭并继续",
+        onClick: () => {
+          dispatch(updateProxy({ enabled: false }));
+          dispatch(setSelectedStep(4));
+        }
+      }
+    },
+    {
+      title: "任务编辑先做最短路径",
+      summary: "不要一下子加十几个步骤。最简单的任务一般就是：打开页面、点击、等待、提取结果。",
+      todo: [
+        "先保留 1 到 4 个步骤",
+        "优先用访问页面、点击、等待、提取",
+        "条件和循环等脚本稳定后再加"
+      ],
+      tip: "第一次成功的关键不是功能多，而是先把一条最短流程跑通。",
+      primaryAction: {
+        label: "去生成脚本",
+        onClick: () => dispatch(setSelectedStep(5))
+      }
+    },
+    {
+      title: "最后只看一个结果：有没有绿色通过提示",
+      summary: "只要这里显示通过校验，就直接生成脚本。生成完再打开目录看成品。",
+      todo: [
+        "看校验问题是不是已经清零",
+        "点击生成脚本",
+        "打开输出目录，检查 script.py 和 requirements.txt"
+      ],
+      tip: "如果还有报错，不用慌，先看提示里说的是哪个字段没填。",
+      primaryAction: {
+        label: "立即生成脚本",
+        onClick: () => void handleGenerateScript()
+      }
+    }
+  ][selectedStep];
 
   return (
     <Layout className="app-shell">
@@ -243,6 +454,16 @@ export default function App() {
         </Header>
 
         <Content className="app-content">
+          <BeginnerGuidePanel
+            title={beginnerGuide.title}
+            summary={beginnerGuide.summary}
+            todo={beginnerGuide.todo}
+            tip={beginnerGuide.tip}
+            statuses={stepStatuses}
+            primaryAction={beginnerGuide.primaryAction}
+            secondaryAction={beginnerGuide.secondaryAction}
+          />
+
           {selectedStep === 0 ? (
             <TemplateHub
               config={config}
@@ -255,6 +476,8 @@ export default function App() {
                 setSaveName(config.meta.name);
                 setSaveModalOpen(true);
               }}
+              onStartFromExample={() => void handleStartFromExample()}
+              onContinueBlank={() => dispatch(setSelectedStep(1))}
               onLoadSaved={(id) =>
                 void loadDocument(() => window.scriptGenerator.loadSavedConfig(id))
               }
@@ -331,6 +554,60 @@ export default function App() {
           </Space>
         </div>
       </Layout>
+
+      <Modal
+        width={720}
+        title="第一次使用建议先这样做"
+        open={onboardingOpen}
+        onCancel={closeOnboarding}
+        footer={null}
+      >
+        <Space
+          direction="vertical"
+          size={16}
+          style={{ width: "100%" }}
+        >
+          <Paragraph className="muted-copy" style={{ marginBottom: 0 }}>
+            你现在不需要理解全部功能。先用一个示例模板走通“载入、看配置、生成脚本”这条路径，
+            成功一次之后再改成自己的站点。
+          </Paragraph>
+          <div className="onboarding-list">
+            <div className="onboarding-item">
+              <span className="guide-number">1</span>
+              <Text>载入示例模板，不要从空白开始。</Text>
+            </div>
+            <div className="onboarding-item">
+              <span className="guide-number">2</span>
+              <Text>先保持默认参数，只改网址、登录和任务。</Text>
+            </div>
+            <div className="onboarding-item">
+              <span className="guide-number">3</span>
+              <Text>看到绿色通过后，直接生成脚本。</Text>
+            </div>
+          </div>
+          <Space wrap>
+            <Button type="primary" onClick={() => void handleStartFromExample()}>
+              立即载入示例
+            </Button>
+            <Button
+              onClick={() => {
+                closeOnboarding();
+                void handleImport();
+              }}
+            >
+              导入现成配置
+            </Button>
+            <Button
+              onClick={() => {
+                closeOnboarding();
+                dispatch(setSelectedStep(1));
+              }}
+            >
+              我想从空白开始
+            </Button>
+          </Space>
+        </Space>
+      </Modal>
 
       <Modal
         title="保存当前模板"

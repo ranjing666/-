@@ -95,6 +95,21 @@ export function TaskListEditor(props: TaskListEditorProps) {
         />
       }
     >
+      {depth === 0 ? (
+        <Card className="task-intro-card">
+          <Space
+            direction="vertical"
+            size={8}
+          >
+            <Text strong>最容易上手的任务顺序：</Text>
+            <Text>访问页面、点击元素、等待提示、提取结果。</Text>
+            <Text className="muted-copy">
+              第一次不要一口气加太多步骤。先做出一个最短流程，确认能生成，再慢慢加条件和循环。
+            </Text>
+          </Space>
+        </Card>
+      ) : null}
+
       {tasks.length === 0 ? (
         <Paragraph className="muted-copy">还没有任务步骤，先从右上角添加一个操作。</Paragraph>
       ) : null}
