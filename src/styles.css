@@ -1,0 +1,198 @@
+:root {
+  color: #261811;
+  background:
+    radial-gradient(circle at top left, rgba(255, 216, 166, 0.65), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(208, 119, 88, 0.22), transparent 26%),
+    linear-gradient(135deg, #f6efe1 0%, #efe6d8 48%, #e7dcc9 100%);
+  font-family:
+    "Aptos",
+    "Microsoft YaHei UI",
+    "Segoe UI Variable Display",
+    "Trebuchet MS",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #261811;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.app-sider.ant-layout-sider {
+  background: rgba(255, 249, 241, 0.76);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(85, 53, 33, 0.08);
+  padding: 24px 18px;
+}
+
+.brand-block {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: start;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #c96e4a 0%, #8f3f2d 100%);
+  color: #fff8f1;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: 0 18px 42px rgba(98, 45, 23, 0.22);
+}
+
+.step-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.sider-footer {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(160, 79, 52, 0.08);
+}
+
+.app-header.ant-layout-header {
+  height: auto;
+  line-height: 1.2;
+  background: transparent;
+  padding: 28px 28px 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+}
+
+.app-content {
+  padding: 12px 28px 20px;
+}
+
+.hero-card,
+.metric-card,
+.task-card,
+.nested-task-card,
+.app-content .ant-card,
+.bottom-bar {
+  border: 1px solid rgba(105, 67, 40, 0.08);
+  box-shadow: 0 22px 60px rgba(76, 49, 31, 0.08);
+}
+
+.hero-card {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(214, 116, 71, 0.18), transparent 24%),
+    linear-gradient(135deg, rgba(255, 251, 245, 0.92), rgba(248, 239, 228, 0.96));
+}
+
+.metric-card .ant-statistic {
+  min-height: 108px;
+}
+
+.muted-copy {
+  color: #6e5b4e;
+}
+
+.accent-tag.ant-tag {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(161, 79, 52, 0.1);
+  border-color: transparent;
+  color: #7d341d;
+  padding-inline: 12px;
+  line-height: 30px;
+}
+
+.eyebrow {
+  color: #8a6b58;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.bottom-bar {
+  margin: 0 28px 24px;
+  padding: 18px 22px;
+  border-radius: 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.task-card {
+  background: rgba(255, 252, 247, 0.96);
+}
+
+.nested-task-card {
+  background: rgba(249, 241, 233, 0.8);
+  margin-top: 12px;
+}
+
+.code-preview {
+  margin: 0;
+  padding: 18px;
+  overflow: auto;
+  border-radius: 16px;
+  background: #1f1613;
+  color: #f8e9dd;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inline-input {
+  width: 100%;
+  border: 1px solid rgba(103, 65, 37, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.inline-input:focus {
+  outline: 2px solid rgba(161, 79, 52, 0.18);
+  border-color: #a14f34;
+}
+
+@media (max-width: 1024px) {
+  .app-sider.ant-layout-sider {
+    display: none;
+  }
+
+  .app-header.ant-layout-header,
+  .app-content,
+  .bottom-bar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .bottom-bar {
+    margin-left: 16px;
+    margin-right: 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

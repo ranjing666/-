@@ -1,0 +1,53 @@
+{
+  "id": "discord-engagement",
+  "name": "Discord 社交任务",
+  "description": "示例：携带 Cookie 进入页面，完成 API 请求和页面交互。",
+  "config": {
+    "meta": {
+      "name": "Discord 社交任务",
+      "description": "通过 Cookie 复用现有登录态，组合浏览器任务和接口请求"
+    },
+    "global": {
+      "timeout": 30,
+      "retryTimes": 2,
+      "randomDelay": true,
+      "headless": false,
+      "outputDirectory": ""
+    },
+    "login": {
+      "method": "cookie",
+      "url": "https://discord.com/channels/@me",
+      "injectionMode": "cookie",
+      "cookieString": "locale=zh-CN; __dcfduid=demo",
+      "token": "",
+      "headerName": "Authorization"
+    },
+    "proxy": {
+      "enabled": false,
+      "type": "http",
+      "mode": "single",
+      "single": "",
+      "list": [],
+      "rotation": "sequential"
+    },
+    "tasks": [
+      {
+        "id": "navigate-1",
+        "type": "navigate",
+        "label": "打开目标频道",
+        "url": "https://discord.com/channels/000/111",
+        "waitUntil": "networkidle"
+      },
+      {
+        "id": "api-1",
+        "type": "api_request",
+        "label": "领取任务状态",
+        "method": "GET",
+        "url": "https://example.com/api/tasks",
+        "headersText": "{\n  \"Accept\": \"application/json\"\n}",
+        "bodyText": "{}",
+        "saveResponseAs": "task_payload"
+      }
+    ]
+  }
+}

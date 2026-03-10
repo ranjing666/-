@@ -22,6 +22,10 @@ dist/
 build/
 out/
 coverage/
+tmp-output/
+python_engine/build/
+python_engine/dist/
+python_engine/*.spec
 
 # IDE
 .idea/

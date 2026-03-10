@@ -1,0 +1,474 @@
+from __future__ import annotations
+
+import json
+import logging
+import os
+import random
+import re
+import time
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlparse
+
+import requests
+{% if include_browser %}
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
+{% endif %}
+{% if include_web3 %}
+from eth_account.messages import encode_defunct
+from web3 import Web3
+{% endif %}
+
+CONFIG = {{ config_json }}
+GENERATED_DEPENDENCIES = {{ dependency_list }}
+REQUIRES_BROWSER = {{ "True" if include_browser else "False" }}
+PROXY_STATE = {"index": 0}
+
+LOG_FILE = Path(__file__).with_suffix(".log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+LOGGER = logging.getLogger("script_generator")
+
+
+def resolve_template(value: Any, variables: dict[str, Any]) -> Any:
+    if not isinstance(value, str):
+        return value
+
+    result = value
+    result = result.replace({{ "'{{timestamp}}'" }}, str(int(time.time())))
+
+    random_pattern = re.compile(r"\{\{\s*random_int\((\d+),\s*(\d+)\)\s*\}\}")
+    env_pattern = re.compile(r"\{\{\s*env\('([^']+)'\)\s*\}\}")
+    variable_pattern = re.compile(r"\{\{\s*([a-zA-Z_][\w]*)\s*\}\}")
+
+    result = random_pattern.sub(
+        lambda match: str(random.randint(int(match.group(1)), int(match.group(2)))),
+        result,
+    )
+    result = env_pattern.sub(
+        lambda match: os.getenv(match.group(1), ""),
+        result,
+    )
+    result = variable_pattern.sub(
+        lambda match: str(variables.get(match.group(1), "")),
+        result,
+    )
+    return result
+
+
+def safe_json_loads(text: str) -> Any:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return {}
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        return cleaned
+
+
+def maybe_delay() -> None:
+    if not CONFIG["global"].get("randomDelay", False):
+        return
+    delay = random.uniform(0.35, 1.25)
+    LOGGER.info("随机延迟 %.2f 秒", delay)
+    time.sleep(delay)
+
+
+def normalize_proxy_url(proxy_value: str) -> str:
+    if proxy_value.startswith(("http://", "https://", "socks5://")):
+        return proxy_value
+    return f'{CONFIG["proxy"]["type"]}://{proxy_value}'
+
+
+def get_proxy_candidates() -> list[str]:
+    proxy_config = CONFIG.get("proxy", {})
+    if not proxy_config.get("enabled"):
+        return []
+
+    if proxy_config.get("mode") == "single":
+        single = str(proxy_config.get("single", "")).strip()
+        return [normalize_proxy_url(single)] if single else []
+
+    return [normalize_proxy_url(item) for item in proxy_config.get("list", []) if item]
+
+
+def choose_proxy() -> str | None:
+    proxies = get_proxy_candidates()
+    if not proxies:
+        return None
+
+    proxy_config = CONFIG["proxy"]
+    if proxy_config.get("mode") == "single":
+        return proxies[0]
+
+    rotation = proxy_config.get("rotation", "sequential")
+    if rotation == "random":
+        return random.choice(proxies)
+
+    choice = proxies[PROXY_STATE["index"] % len(proxies)]
+    PROXY_STATE["index"] += 1
+    return choice
+
+
+def build_requests_session(initial_proxy: str | None) -> requests.Session:
+    session = requests.Session()
+    session.headers.update(
+        {
+            "User-Agent": "ScriptGenerator/0.1 (+https://github.com/ranjing666)"
+        }
+    )
+    if initial_proxy:
+        session.proxies = {"http": initial_proxy, "https": initial_proxy}
+
+    login = CONFIG.get("login", {})
+    if login.get("method") == "cookie":
+        if login.get("injectionMode") == "header" and login.get("token"):
+            session.headers[login.get("headerName", "Authorization")] = resolve_template(
+                login.get("token", ""), {}
+            )
+        if login.get("injectionMode") == "cookie" and login.get("cookieString"):
+            session.headers["Cookie"] = resolve_template(login.get("cookieString", ""), {})
+
+    return session
+
+
+def parse_cookie_string(cookie_string: str) -> list[dict[str, str]]:
+    cookies = []
+    for chunk in cookie_string.split(";"):
+        if "=" not in chunk:
+            continue
+        name, value = chunk.split("=", 1)
+        cookies.append({"name": name.strip(), "value": value.strip()})
+    return cookies
+
+
+def compare_value(left: Any, operator: str, right: Any) -> bool:
+    if operator == "exists":
+        return bool(left)
+    if operator == "equals":
+        return str(left) == str(right)
+    if operator == "contains":
+        return str(right) in str(left)
+    if operator == "not_equals":
+        return str(left) != str(right)
+    return False
+
+
+def evaluate_condition(task: dict[str, Any], page: Any, variables: dict[str, Any]) -> bool:
+    if task.get("mode") == "variable":
+        left = variables.get(task.get("variable", ""))
+        right = resolve_template(task.get("compareValue", ""), variables)
+        return compare_value(left, task.get("operator", "exists"), right)
+
+    if page is None:
+        raise RuntimeError("条件任务需要浏览器上下文")
+
+    locator = page.locator(task.get("selector", ""))
+    count = locator.count()
+    if task.get("operator") == "exists":
+        return count > 0
+    if count == 0:
+        return False
+
+    text = locator.first.inner_text()
+    right = resolve_template(task.get("compareValue", ""), variables)
+    return compare_value(text, task.get("operator", "exists"), right)
+
+
+{% if include_web3 %}
+def wallet_login(variables: dict[str, Any]) -> None:
+    login = CONFIG.get("login", {})
+    private_key_name = login.get("privateKeyEnvVar", "PRIVATE_KEY")
+    private_key = os.getenv(private_key_name)
+    if not private_key:
+        raise RuntimeError(f"环境变量 {private_key_name} 未设置")
+
+    web3 = Web3(Web3.HTTPProvider(login["rpcUrl"]))
+    if not web3.is_connected():
+        raise RuntimeError("无法连接 RPC 节点")
+
+    account = web3.eth.account.from_key(private_key)
+    variables["wallet_address"] = account.address
+    LOGGER.info("钱包地址: %s", account.address)
+
+    if login.get("signatureType") == "sign_message":
+        message = resolve_template(login.get("message", ""), variables)
+        signed = web3.eth.account.sign_message(
+            encode_defunct(text=message),
+            private_key=private_key,
+        )
+        variables["wallet_signature"] = signed.signature.hex()
+        LOGGER.info("钱包签名已生成")
+        return
+
+    transaction = {
+        "from": account.address,
+        "to": resolve_template(login.get("toAddress", ""), variables),
+        "value": web3.to_wei(str(login.get("value", "0")), "ether"),
+        "data": resolve_template(login.get("data", ""), variables),
+        "nonce": web3.eth.get_transaction_count(account.address),
+        "chainId": int(login.get("chainId", 1)),
+        "gasPrice": web3.eth.gas_price,
+        "gas": 21000,
+    }
+    signed_transaction = account.sign_transaction(transaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_transaction.raw_transaction)
+    variables["wallet_tx_hash"] = web3.to_hex(tx_hash)
+    LOGGER.info("交易已广播: %s", variables["wallet_tx_hash"])
+{% endif %}
+
+{% if include_browser %}
+def build_playwright_proxy(initial_proxy: str | None) -> dict[str, str] | None:
+    if not initial_proxy:
+        return None
+    return {"server": initial_proxy}
+
+
+def apply_cookie_or_token(context: Any, session: requests.Session, variables: dict[str, Any]) -> None:
+    login = CONFIG.get("login", {})
+    if login.get("method") != "cookie":
+        return
+
+    login_url = resolve_template(login.get("url", ""), variables)
+    if login.get("injectionMode") == "header" and login.get("token"):
+        header_name = login.get("headerName", "Authorization")
+        token_value = resolve_template(login.get("token", ""), variables)
+        context.set_extra_http_headers({header_name: token_value})
+        session.headers[header_name] = token_value
+        return
+
+    cookie_value = resolve_template(login.get("cookieString", ""), variables)
+    cookies = parse_cookie_string(cookie_value)
+    if not cookies or not login_url:
+        return
+    context.add_cookies([{**cookie, "url": login_url} for cookie in cookies])
+    session.headers["Cookie"] = cookie_value
+
+
+def password_login(page: Any, variables: dict[str, Any]) -> None:
+    login = CONFIG["login"]
+    page.goto(resolve_template(login["url"], variables), wait_until="load")
+    page.locator(login["usernameSelector"]).fill(resolve_template(login["username"], variables))
+    page.locator(login["passwordSelector"]).fill(resolve_template(login["password"], variables))
+
+    if login.get("captchaEnabled") and login.get("captchaSelector"):
+        LOGGER.info("检测到验证码，请手动处理后回车继续")
+        input("请完成验证码后按 Enter 继续...")
+
+    page.locator(login["submitSelector"]).click()
+    if login.get("successSelector"):
+        page.wait_for_selector(
+            login["successSelector"],
+            timeout=CONFIG["global"]["timeout"] * 1000,
+        )
+
+
+def run_browser_task(task: dict[str, Any], page: Any, variables: dict[str, Any]) -> None:
+    task_type = task["type"]
+
+    if task_type == "navigate":
+        page.goto(
+            resolve_template(task["url"], variables),
+            wait_until=task.get("waitUntil", "load"),
+        )
+        return
+
+    if task_type == "click":
+        page.locator(task["selector"]).nth(int(task.get("index", 0))).click(
+            timeout=int(task.get("timeout", 30)) * 1000
+        )
+        return
+
+    if task_type == "input":
+        locator = page.locator(task["selector"])
+        if task.get("clearFirst", True):
+            locator.clear()
+        locator.fill(resolve_template(task.get("value", ""), variables))
+        return
+
+    if task_type == "select":
+        selector = task["selector"]
+        option_index = task.get("optionIndex")
+        if option_index is not None:
+            page.locator(selector).evaluate(
+                "(node, index) => { node.selectedIndex = index; node.dispatchEvent(new Event('change', { bubbles: true })); }",
+                int(option_index),
+            )
+        else:
+            page.locator(selector).select_option(value=resolve_template(task.get("optionValue", ""), variables))
+        return
+
+    if task_type == "wait":
+        if task.get("mode") == "duration":
+            time.sleep(int(task.get("durationSeconds", 1)))
+        else:
+            page.wait_for_selector(
+                task.get("selector", ""),
+                timeout=int(task.get("timeout", 30)) * 1000,
+            )
+        return
+
+    if task_type == "execute_script":
+        variables["last_script_result"] = page.evaluate(task.get("script", ""))
+        return
+
+    if task_type == "extract":
+        locator = page.locator(task["selector"]).first
+        attribute = task.get("attribute", "text")
+        if attribute == "text":
+            value = locator.inner_text()
+        elif attribute == "html":
+            value = locator.inner_html()
+        else:
+            value = locator.get_attribute(attribute)
+        variables[task["variable"]] = value
+        LOGGER.info("提取变量 %s=%s", task["variable"], value)
+        return
+
+    raise RuntimeError(f"未知浏览器任务: {task_type}")
+{% endif %}
+
+
+def execute_api_request(task: dict[str, Any], session: requests.Session, variables: dict[str, Any]) -> None:
+    request_kwargs: dict[str, Any] = {}
+    if CONFIG["proxy"].get("enabled") and CONFIG["proxy"].get("rotation") == "per_request":
+        per_request_proxy = choose_proxy()
+        if per_request_proxy:
+            request_kwargs["proxies"] = {
+                "http": per_request_proxy,
+                "https": per_request_proxy,
+            }
+
+    headers = safe_json_loads(resolve_template(task.get("headersText", ""), variables))
+    body = safe_json_loads(resolve_template(task.get("bodyText", ""), variables))
+    method = task.get("method", "GET").upper()
+    url = resolve_template(task.get("url", ""), variables)
+    LOGGER.info("API %s %s", method, url)
+
+    if isinstance(headers, dict):
+        request_kwargs["headers"] = headers
+
+    if method != "GET" and body not in ({}, "", None):
+        if isinstance(body, (dict, list)):
+            request_kwargs["json"] = body
+        else:
+            request_kwargs["data"] = body
+
+    response = session.request(method=method, url=url, timeout=CONFIG["global"]["timeout"], **request_kwargs)
+    response.raise_for_status()
+    if task.get("saveResponseAs"):
+        try:
+            variables[task["saveResponseAs"]] = response.json()
+        except ValueError:
+            variables[task["saveResponseAs"]] = response.text
+        LOGGER.info("已保存响应变量 %s", task["saveResponseAs"])
+
+
+def run_tasks(tasks: list[dict[str, Any]], page: Any, session: requests.Session, variables: dict[str, Any]) -> None:
+    for task in tasks:
+        task_type = task.get("type")
+        LOGGER.info("开始步骤: %s (%s)", task.get("label", task_type), task_type)
+
+        if task_type == "api_request":
+            execute_api_request(task, session, variables)
+        elif task_type == "condition":
+            matched = evaluate_condition(task, page, variables)
+            branch = task.get("thenTasks", []) if matched else task.get("elseTasks", [])
+            run_tasks(branch, page, session, variables)
+        elif task_type == "loop":
+            if task.get("mode") == "count":
+                for _ in range(int(task.get("count", 1))):
+                    run_tasks(task.get("tasks", []), page, session, variables)
+            else:
+                guard = 0
+                while evaluate_condition(
+                    {
+                        "mode": "variable",
+                        "variable": task.get("variable", ""),
+                        "operator": task.get("operator", "exists"),
+                        "compareValue": task.get("compareValue", ""),
+                    },
+                    page,
+                    variables,
+                ):
+                    run_tasks(task.get("tasks", []), page, session, variables)
+                    guard += 1
+                    if guard >= 100:
+                        LOGGER.warning("while 循环超过 100 次，自动停止")
+                        break
+        else:
+            {% if include_browser %}
+            if page is None:
+                raise RuntimeError(f"任务 {task_type} 需要浏览器上下文")
+            run_browser_task(task, page, variables)
+            {% else %}
+            raise RuntimeError(f"当前生成脚本不包含浏览器运行时，无法执行任务 {task_type}")
+            {% endif %}
+
+        maybe_delay()
+
+
+def main() -> None:
+    variables: dict[str, Any] = {}
+    initial_proxy = choose_proxy()
+    session = build_requests_session(initial_proxy)
+    LOGGER.info("依赖清单: %s", ", ".join(GENERATED_DEPENDENCIES))
+
+    {% if include_web3 %}
+    if CONFIG.get("login", {}).get("method") == "wallet":
+        wallet_login(variables)
+    {% endif %}
+
+    {% if include_browser %}
+    if REQUIRES_BROWSER:
+        with sync_playwright() as playwright:
+            launch_kwargs: dict[str, Any] = {
+                "headless": CONFIG["global"].get("headless", False)
+            }
+            playwright_proxy = build_playwright_proxy(initial_proxy)
+            if playwright_proxy:
+                launch_kwargs["proxy"] = playwright_proxy
+
+            browser = playwright.chromium.launch(**launch_kwargs)
+            context = browser.new_context()
+            apply_cookie_or_token(context, session, variables)
+            page = context.new_page()
+
+            login = CONFIG.get("login", {})
+            if login.get("method") == "password":
+                password_login(page, variables)
+            elif login.get("method") == "cookie" and login.get("url"):
+                page.goto(resolve_template(login["url"], variables), wait_until="load")
+            elif login.get("method") == "wallet" and login.get("loginUrl"):
+                page.goto(resolve_template(login["loginUrl"], variables), wait_until="load")
+
+            run_tasks(CONFIG.get("tasks", []), page, session, variables)
+            browser.close()
+    else:
+        run_tasks(CONFIG.get("tasks", []), None, session, variables)
+    {% else %}
+    run_tasks(CONFIG.get("tasks", []), None, session, variables)
+    {% endif %}
+
+    LOGGER.info("全部步骤执行完成")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    {% if include_browser %}
+    except PlaywrightTimeoutError as exc:
+        LOGGER.exception("页面超时: %s", exc)
+        raise SystemExit(1)
+    {% endif %}
+    except Exception as exc:  # pragma: no cover - runtime failure path
+        LOGGER.exception("执行失败: %s", exc)
+        raise SystemExit(1)
