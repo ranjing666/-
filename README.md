@@ -1,7 +1,7 @@
-# Script Generator
+# 脚本生成器
 
-Project workspace for the upcoming implementation.
+项目工作区，后续将根据设计文档逐步实现。
 
-## Status
+## 状态
 
-Scaffolded repository. The product design and application code will be added next.
+当前仓库已完成初始化，接下来会补充产品设计对应的应用代码与打包流程。
