@@ -53,7 +53,7 @@ npm run publish:release
 
 ## 打包产物
 
-- Windows 安装包：`dist/脚本生成器 Setup 0.1.0.exe`
+- Windows 安装包：`dist/脚本生成器 Setup <version>.exe`
 - Windows 解包目录：`dist/win-unpacked/`
 
 ## 当前说明

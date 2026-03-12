@@ -32,7 +32,7 @@ function getLogsDir() {
 function findGeneratorExecutable() {
   const engineDir = getPythonEngineDir();
   const packagedExe = path.join(engineDir, "dist", "generator.exe");
-  if (fs.existsSync(packagedExe)) {
+  if (!isDev && fs.existsSync(packagedExe)) {
     return {
       command: packagedExe,
       args: []
