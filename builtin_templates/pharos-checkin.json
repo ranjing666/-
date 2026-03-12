@@ -1,0 +1,96 @@
+{
+  "id": "pharos-checkin",
+  "name": "Pharos 每日领取起步模板",
+  "description": "根据空投神器安装包里的 Pharos 脚本目录整理的起步模板，适合钱包连接后执行每日领取或签到流程。",
+  "platform": "Pharos",
+  "category": "空投平台",
+  "source": "空投神器",
+  "tags": ["钱包登录", "点击领取", "成功提示"],
+  "featured": true,
+  "sortOrder": 40,
+  "config": {
+    "meta": {
+      "name": "Pharos 每日领取起步模板",
+      "description": "连接钱包后进入 Pharos 活动页，点击领取按钮并提取结果提示。"
+    },
+    "global": {
+      "timeout": 30,
+      "retryTimes": 3,
+      "randomDelay": true,
+      "headless": false,
+      "outputDirectory": ""
+    },
+    "login": {
+      "method": "wallet",
+      "loginUrl": "https://example.com/pharos/login",
+      "rpcUrl": "https://rpc.example.com",
+      "chainId": 1,
+      "contractAddress": "",
+      "signatureType": "sign_message",
+      "message": "Sign in to Pharos",
+      "toAddress": "",
+      "value": "0",
+      "data": "",
+      "privateKeyEnvVar": "PHAROS_PRIVATE_KEY"
+    },
+    "proxy": {
+      "enabled": false,
+      "type": "http",
+      "mode": "single",
+      "single": "",
+      "list": [],
+      "rotation": "sequential"
+    },
+    "tasks": [
+      {
+        "id": "navigate-1",
+        "type": "navigate",
+        "label": "打开 Pharos 活动页",
+        "url": "https://example.com/pharos/daily",
+        "waitUntil": "networkidle"
+      },
+      {
+        "id": "click-1",
+        "type": "click",
+        "label": "点击连接钱包",
+        "selector": "button.connect-wallet, button[data-testid='connect-wallet']",
+        "timeout": 30,
+        "index": 0
+      },
+      {
+        "id": "wait-1",
+        "type": "wait",
+        "label": "等待任务卡片出现",
+        "mode": "selector",
+        "durationSeconds": 2,
+        "selector": ".task-card, .mission-list",
+        "timeout": 30
+      },
+      {
+        "id": "click-2",
+        "type": "click",
+        "label": "点击每日领取按钮",
+        "selector": "button.claim-button, button[data-action='claim']",
+        "timeout": 30,
+        "index": 0
+      },
+      {
+        "id": "wait-2",
+        "type": "wait",
+        "label": "等待领取结果",
+        "mode": "selector",
+        "durationSeconds": 2,
+        "selector": ".toast-success, .claim-result",
+        "timeout": 20
+      },
+      {
+        "id": "extract-1",
+        "type": "extract",
+        "label": "提取领取结果",
+        "selector": ".toast-success, .claim-result",
+        "attribute": "text",
+        "variable": "pharos_claim_result"
+      }
+    ]
+  }
+}

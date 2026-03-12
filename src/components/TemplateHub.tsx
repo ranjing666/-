@@ -4,6 +4,43 @@ import type { ScriptConfig, TemplateSummary } from "../types/config";
 
 const { Paragraph, Text, Title } = Typography;
 
+function compareTemplateOrder(left: TemplateSummary, right: TemplateSummary) {
+  const leftOrder = left.sortOrder ?? Number.MAX_SAFE_INTEGER;
+  const rightOrder = right.sortOrder ?? Number.MAX_SAFE_INTEGER;
+
+  if (leftOrder !== rightOrder) {
+    return leftOrder - rightOrder;
+  }
+
+  return left.name.localeCompare(right.name, "zh-CN");
+}
+
+function renderTemplateDescription(item: TemplateSummary) {
+  const tags = [
+    item.platform,
+    item.category,
+    item.source,
+    ...(item.tags ?? [])
+  ].filter(Boolean) as string[];
+
+  return (
+    <Space
+      direction="vertical"
+      size={8}
+      style={{ width: "100%" }}
+    >
+      <Text type="secondary">{item.description || "预置任务模板"}</Text>
+      {tags.length > 0 ? (
+        <Space wrap>
+          {tags.map((tag) => (
+            <Tag key={`${item.id}-${tag}`}>{tag}</Tag>
+          ))}
+        </Space>
+      ) : null}
+    </Space>
+  );
+}
+
 interface TemplateHubProps {
   config: ScriptConfig;
   savedConfigs: TemplateSummary[];
@@ -34,6 +71,8 @@ export function TemplateHub(props: TemplateHubProps) {
     onLoadSaved,
     onLoadBuiltin
   } = props;
+  const sortedBuiltinTemplates = [...builtinTemplates].sort(compareTemplateOrder);
+  const platformTemplates = sortedBuiltinTemplates.filter((item) => item.source === "空投神器");
 
   return (
     <Space
@@ -238,6 +277,54 @@ export function TemplateHub(props: TemplateHubProps) {
             </Row>
           </Card>
         </Col>
+        <Col span={24}>
+          <Card
+            title="根据空投神器整理的平台起步模板"
+            extra={<Text type="secondary">{platformTemplates.length} 个</Text>}
+          >
+            {platformTemplates.length === 0 ? (
+              <Empty description="还没有平台模板" />
+            ) : (
+              <Row gutter={[16, 16]}>
+                {platformTemplates.map((item) => (
+                  <Col
+                    key={item.id}
+                    xs={24}
+                    md={12}
+                    xl={8}
+                  >
+                    <Card className="quickstart-card">
+                      <Space
+                        direction="vertical"
+                        size={12}
+                        style={{ width: "100%" }}
+                      >
+                        <Space wrap>
+                          <Tag color="gold">空投线索</Tag>
+                          {item.platform ? <Tag color="blue">{item.platform}</Tag> : null}
+                        </Space>
+                        <Title level={4}>{item.name}</Title>
+                        <Paragraph className="muted-copy" style={{ marginBottom: 0 }}>
+                          {item.description}
+                        </Paragraph>
+                        {item.tags?.length ? (
+                          <Space wrap>
+                            {item.tags.map((tag) => (
+                              <Tag key={`${item.id}-${tag}`}>{tag}</Tag>
+                            ))}
+                          </Space>
+                        ) : null}
+                        <Button type="primary" onClick={() => onLoadBuiltin(item.id)}>
+                          载入这个平台模板
+                        </Button>
+                      </Space>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </Card>
+        </Col>
         <Col
           xs={24}
           xl={12}
@@ -266,7 +353,7 @@ export function TemplateHub(props: TemplateHubProps) {
                   >
                     <List.Item.Meta
                       title={item.name}
-                      description={item.description || "未填写模板说明"}
+                      description={renderTemplateDescription(item)}
                     />
                   </List.Item>
                 )}
@@ -287,7 +374,7 @@ export function TemplateHub(props: TemplateHubProps) {
             ) : (
               <List
                 itemLayout="horizontal"
-                dataSource={builtinTemplates}
+                dataSource={sortedBuiltinTemplates}
                 renderItem={(item) => (
                   <List.Item
                     actions={[
@@ -295,14 +382,14 @@ export function TemplateHub(props: TemplateHubProps) {
                         key="apply"
                         type="link"
                         onClick={() => onLoadBuiltin(item.id)}
-                      >
-                        一键载入
+                    >
+                      一键载入
                       </Button>
                     ]}
                   >
                     <List.Item.Meta
                       title={item.name}
-                      description={item.description || "预置任务模板"}
+                      description={renderTemplateDescription(item)}
                     />
                   </List.Item>
                 )}

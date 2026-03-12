@@ -2,6 +2,10 @@
   "id": "daily-checkin",
   "name": "交易所每日签到",
   "description": "示例：登录后访问任务页，点击签到并提取结果文案。",
+  "category": "通用模板",
+  "tags": ["账号密码", "签到", "提取文案"],
+  "featured": true,
+  "sortOrder": 10,
   "config": {
     "meta": {
       "name": "交易所每日签到",

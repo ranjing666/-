@@ -125,7 +125,13 @@ function listTemplateSummaries(dirPath) {
         id: data.id || path.basename(name, ".json"),
         name: data.name || path.basename(name, ".json"),
         description: data.description || "",
-        filePath: fullPath
+        filePath: fullPath,
+        platform: data.platform || undefined,
+        category: data.category || undefined,
+        tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : undefined,
+        source: data.source || undefined,
+        featured: Boolean(data.featured),
+        sortOrder: Number.isFinite(data.sortOrder) ? data.sortOrder : undefined
       };
     });
 }

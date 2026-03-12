@@ -202,6 +202,12 @@ export interface TemplateSummary {
   name: string;
   description: string;
   filePath?: string;
+  platform?: string;
+  category?: string;
+  tags?: string[];
+  source?: string;
+  featured?: boolean;
+  sortOrder?: number;
 }
 
 export interface SavedTemplateDocument extends TemplateSummary {

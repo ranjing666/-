@@ -1,0 +1,67 @@
+{
+  "id": "sosovalue-insight",
+  "name": "SoSoValue 数据任务起步模板",
+  "description": "根据空投神器安装包里的 SoSoValue 脚本目录整理的起步模板，适合复用 Cookie 登录态并结合 API 与页面提取。",
+  "platform": "SoSoValue",
+  "category": "空投平台",
+  "source": "空投神器",
+  "tags": ["Cookie 登录", "API 请求", "数据提取"],
+  "featured": true,
+  "sortOrder": 50,
+  "config": {
+    "meta": {
+      "name": "SoSoValue 数据任务起步模板",
+      "description": "使用现有 Cookie 进入 SoSoValue 页面，拉取任务接口并提取页面关键信息。"
+    },
+    "global": {
+      "timeout": 30,
+      "retryTimes": 2,
+      "randomDelay": true,
+      "headless": false,
+      "outputDirectory": ""
+    },
+    "login": {
+      "method": "cookie",
+      "url": "https://example.com/sosovalue/dashboard",
+      "injectionMode": "cookie",
+      "cookieString": "ssv_session={{env('SOSOVALUE_COOKIE')}}",
+      "token": "",
+      "headerName": "Authorization"
+    },
+    "proxy": {
+      "enabled": false,
+      "type": "http",
+      "mode": "single",
+      "single": "",
+      "list": [],
+      "rotation": "sequential"
+    },
+    "tasks": [
+      {
+        "id": "navigate-1",
+        "type": "navigate",
+        "label": "打开 SoSoValue 仪表盘",
+        "url": "https://example.com/sosovalue/dashboard",
+        "waitUntil": "networkidle"
+      },
+      {
+        "id": "api-1",
+        "type": "api_request",
+        "label": "拉取任务概览接口",
+        "method": "GET",
+        "url": "https://example.com/api/sosovalue/tasks",
+        "headersText": "{\n  \"Accept\": \"application/json\",\n  \"Authorization\": \"Bearer {{env('SOSOVALUE_API_TOKEN')}}\"\n}",
+        "bodyText": "{}",
+        "saveResponseAs": "sosovalue_task_payload"
+      },
+      {
+        "id": "extract-1",
+        "type": "extract",
+        "label": "提取页面主任务标题",
+        "selector": ".mission-card .title, .task-title",
+        "attribute": "text",
+        "variable": "sosovalue_primary_task"
+      }
+    ]
+  }
+}

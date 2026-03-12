@@ -1,0 +1,79 @@
+{
+  "id": "arc-points",
+  "name": "ARC 积分任务起步模板",
+  "description": "根据空投神器安装包里的 ARC 脚本目录整理的起步模板，适合钱包登录后进入任务页并提取积分信息。",
+  "platform": "ARC",
+  "category": "空投平台",
+  "source": "空投神器",
+  "tags": ["钱包登录", "任务面板", "积分提取"],
+  "featured": true,
+  "sortOrder": 30,
+  "config": {
+    "meta": {
+      "name": "ARC 积分任务起步模板",
+      "description": "连接钱包后打开 ARC 任务页，等待任务面板出现并提取当前积分。"
+    },
+    "global": {
+      "timeout": 30,
+      "retryTimes": 2,
+      "randomDelay": true,
+      "headless": false,
+      "outputDirectory": ""
+    },
+    "login": {
+      "method": "wallet",
+      "loginUrl": "https://example.com/arc/login",
+      "rpcUrl": "https://rpc.example.com",
+      "chainId": 1,
+      "contractAddress": "",
+      "signatureType": "sign_message",
+      "message": "Sign in to ARC task board",
+      "toAddress": "",
+      "value": "0",
+      "data": "",
+      "privateKeyEnvVar": "ARC_PRIVATE_KEY"
+    },
+    "proxy": {
+      "enabled": false,
+      "type": "http",
+      "mode": "single",
+      "single": "",
+      "list": [],
+      "rotation": "sequential"
+    },
+    "tasks": [
+      {
+        "id": "navigate-1",
+        "type": "navigate",
+        "label": "打开 ARC 任务页",
+        "url": "https://example.com/arc/tasks",
+        "waitUntil": "networkidle"
+      },
+      {
+        "id": "click-1",
+        "type": "click",
+        "label": "点击 Connect Wallet",
+        "selector": "button.connect-wallet, button[data-action='connect-wallet']",
+        "timeout": 30,
+        "index": 0
+      },
+      {
+        "id": "wait-1",
+        "type": "wait",
+        "label": "等待任务面板加载",
+        "mode": "selector",
+        "durationSeconds": 2,
+        "selector": ".task-board, .points-panel",
+        "timeout": 30
+      },
+      {
+        "id": "extract-1",
+        "type": "extract",
+        "label": "提取当前积分",
+        "selector": ".points-panel .value, .points-value",
+        "attribute": "text",
+        "variable": "arc_points"
+      }
+    ]
+  }
+}

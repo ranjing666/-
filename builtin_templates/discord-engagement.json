@@ -2,6 +2,9 @@
   "id": "discord-engagement",
   "name": "Discord 社交任务",
   "description": "示例：携带 Cookie 进入页面，完成 API 请求和页面交互。",
+  "category": "社交任务",
+  "tags": ["Cookie 登录", "API 请求", "页面交互"],
+  "sortOrder": 20,
   "config": {
     "meta": {
       "name": "Discord 社交任务",

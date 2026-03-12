@@ -9,6 +9,7 @@
 - Redux Toolkit 配置状态管理
 - JSON Schema 前端实时校验
 - 本地模板保存、内置模板加载、导入导出
+- 平台起步模板（ARC / Pharos / SoSoValue）
 - 代理配置与代理连通性测试
 - 递归任务编辑器
 - Python 生成引擎（Jinja2 + Black）
@@ -58,5 +59,7 @@ npm run publish:release
 ## 当前说明
 
 - Python 生成器已支持账号密码、Cookie/Token、私钥钱包三类登录配置。
+- `.env.example` 会自动收集配置中使用到的环境变量占位符。
 - 任务编辑支持页面访问、点击、输入、选择、等待、JS 执行、变量提取、条件、循环、API 请求。
+- 内置模板除了通用示例外，新增了根据空投工具脚本线索整理的平台起步模板。
 - 打包链已验证可生成 Windows 安装包；默认使用 Electron 默认图标，后续可替换品牌资源。
